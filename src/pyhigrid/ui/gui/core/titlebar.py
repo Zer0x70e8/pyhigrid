@@ -90,7 +90,7 @@ class TitleBar(QWidget):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 0)
+        layout.setContentsMargins(2, 0, 0, 0)
 
         # 窗口操作按钮（浮动叠加层）
         self.action_widget = TopWindowActionButtonsWidget(self)

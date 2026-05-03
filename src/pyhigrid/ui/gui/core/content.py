@@ -2,8 +2,7 @@
 """"""
 
 from PySide6.QtCore import Signal, Qt
-
-# from PySide6.QtWidgets import QWidget
+from PySide6.QtGui import QBitmap, QPainter
 
 from ..widget.album_scroll_widget import VirtualScrolledWidget
 
@@ -15,6 +14,8 @@ class Content(VirtualScrolledWidget):
         super().__init__(parent)
 
         self._logger = None
+
+        self._corner_radius = 25
 
         self._setup()
 
@@ -29,3 +30,19 @@ class Content(VirtualScrolledWidget):
     def _setup(self):
         self.set_wheel_inverted(True)
         self.setFocusPolicy(Qt.StrongFocus)   # 确保键盘滚动有效
+
+    def _update_mask(self):
+        """根据当前窗口大小生成圆角遮罩"""
+        bitmap = QBitmap(self.size())
+        bitmap.fill(Qt.color0)
+        p = QPainter(bitmap)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setBrush(Qt.color1)
+        p.setPen(Qt.NoPen)
+        p.drawRoundedRect(self.rect(), self._corner_radius, self._corner_radius)
+        p.end()
+        self.setMask(bitmap)
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        self._update_mask()

@@ -1,6 +1,7 @@
 #
 """top window action buttons widget"""
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QHBoxLayout
 
 from .action_buttons import CloseButton, MaximizeButton, MinimizeButton
@@ -43,6 +44,9 @@ class TopWindowActionButtonsWidget(QWidget):
         self.setup_()
 
     def setup_(self):
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setObjectName(type(self).__name__)
+
         self.left_placeholder.setFixedWidth(
             int(self.window_border_top_left_radius)
         )

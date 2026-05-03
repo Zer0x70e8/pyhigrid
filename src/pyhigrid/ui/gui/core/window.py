@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 
 from .content import Content
 from .titlebar import TitleBar
+from .frame import Frame
 
 from ..utils.window_resizer import WindowResizer
 from ..utils.disable_win11_round_corners import disable_round_corners
@@ -30,6 +31,7 @@ class Window(QWidget):
 
         self.content = None
         self.titlebar = None
+        self.frame = None
 
         self.setup_ui()
 
@@ -41,7 +43,7 @@ class Window(QWidget):
 
         #
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        # self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint |
                             Qt.WindowType.WindowMaximizeButtonHint)
 
@@ -62,6 +64,7 @@ class Window(QWidget):
 
         self.content = Content(self)
         self.titlebar = TitleBar(self)
+        self.frame = Frame(self)
 
         #
         self.content.lower()
@@ -69,7 +72,7 @@ class Window(QWidget):
         if __debug__:
             # noinspection SpellCheckingInspection
             with open(
-                    r"E:\myCode\py\pyhigrid\src\pyhigrid\resources\default_theme_qss\main_window.qss",
+                    r".\resources\default_theme_qss\main_window.qss",
                     "r", encoding="utf-8",
 
                     ) as qss:
@@ -90,4 +93,5 @@ class Window(QWidget):
 
     def resizeEvent(self, event):
         self.content.setGeometry(0, 0, self.width(), self.height())
-        self.titlebar.setGeometry(0, 0, self.width(), self.titlebar.height())
+        self.frame.setGeometry(0, 0, self.width(), self.height())
+        self.titlebar.setGeometry(0, 3, self.width(), self.titlebar.height())

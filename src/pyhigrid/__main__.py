@@ -68,11 +68,11 @@ def main():
 
     # main
     app = Application(bg, ui_app, logger, configurator)
-    app.exec()
+    end_code = app.exec()
 
     # end
     logger.info("Program ended.")
-    return 0
+    return end_code
 
 if __name__ == '__main__':
     sys.exit(main())

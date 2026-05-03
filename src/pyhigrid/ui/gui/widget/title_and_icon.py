@@ -57,6 +57,8 @@ class TitleAndIcon(QWidget):
         self._title_elide = ENABLE_TITLE_OVERLENGTH_PROCESSING
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         self.setMinimumSize(1, 1)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setObjectName("TitleAndIcon")
 
     def setup_ui(self):
         layout = QGridLayout()
@@ -87,26 +89,6 @@ class TitleAndIcon(QWidget):
         layout.addWidget(self.icon_label, 0, 0)
         layout.addWidget(self.title_label, 0, 1)
         layout.addWidget(self.subtitle_label, 2, 0, 1, 2)
-
-        self.setStyleSheet("""
-        TitleAndIcon {
-            background-color: yellow;
-            min-width: 1px;
-            max-width: 465px;     
-            min-height: 1px;
-            max-height: 88px;
-        }
-        QLabel#IconLabel { font-size: 48px; }
-        QLabel#TitleLabel { font-size: 48px; }
-        QLabel#SubtitleLabel {
-            font-size: 16px;
-            color: grey;
-            min-width: 1px;
-            max-width: 600px;
-            min-height: 1px;
-            max-height: 24px;
-        }
-        """)
 
         if __debug__:
             self.set_icon("🪟")
