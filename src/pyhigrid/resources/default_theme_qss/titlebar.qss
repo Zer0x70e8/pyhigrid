@@ -1,0 +1,24 @@
+//
+
+TitleBar {
+
+}
+
+
+SearchButton {
+    size: 32;
+    border-radius: 16;
+    background-image: E:\myCode\py\pyhigrid\src\pyhigrid\resources\icon\search_icon.png;
+}
+
+MoreButton {
+    size: 32;
+    border-radius: 16;
+    background-image: E:\myCode\py\pyhigrid\src\pyhigrid\resources\icon\more_icon.png;
+}
+
+ImageButton {
+    size: 32;
+    border-radius: 16;
+    background-image: E:\myCode\py\pyhigrid\src\pyhigrid\resources\icon\image_icon.png;
+}
