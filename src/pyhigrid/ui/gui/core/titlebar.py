@@ -1,31 +1,18 @@
 # titlebar.py
 """"""
 
-# noinspection PyUnusedImports
-from PySide6.QtWidgets import (
-    QToolBar, QLabel, QPushButton, QWidget, QHBoxLayout, QVBoxLayout,
-    QSizePolicy, QLineEdit
-)
-# noinspection PyUnusedImports
-from PySide6.QtGui import QAction, QIcon, QFont
-# noinspection PyUnusedImports
-from PySide6.QtCore import Qt, QSize, QEvent
+from traceback import format_exc
 
-# 导入 ToolBar 及其相关部件
-if __name__ == "__main__":
-    from pyhigrid.ui.gui.widget.title_and_icon import TitleAndIcon
-    from pyhigrid.ui.gui.widget.top_window_action_buttons_widget import (
-        TopWindowActionButtonsWidget
-    )
-    from pyhigrid.ui.gui.widget.tool_bar_widget import (
-        ToolBar, SearchBarLayoutPlaceholder
+from PySide6.QtWidgets import (
+    QPushButton, QWidget, QHBoxLayout, QVBoxLayout,
 )
-else:
-    from ..widget.title_and_icon import TitleAndIcon
-    from ..widget.top_window_action_buttons_widget import TopWindowActionButtonsWidget
-    from ..widget.tool_bar_widget import (
-        ToolBar, SearchBarLayoutPlaceholder
-    )
+from PySide6.QtCore import Qt, Signal
+
+from ..widget.title_and_icon import TitleAndIcon
+from ..widget.top_window_action_buttons_widget import TopWindowActionButtonsWidget
+from ..widget.tool_bar_widget import (
+    ToolBar, SearchBarLayoutPlaceholder
+)
 
 
 class _ToolBar(ToolBar):
@@ -41,12 +28,12 @@ class _ToolBar(ToolBar):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        # 图片按钮
-        self.image_button = QPushButton()
-        self.image_button.setObjectName("ImageButton")
+        # 相薄按钮
+        self.album_button: QPushButton = QPushButton(self)
+        self.album_button.setObjectName("AlbumButton")
         # self.image_button.setIcon(QIcon(f"{icon_path}/image_icon.png"))
         # self.image_button.setIconSize(QSize(48, 48))
-        self.image_button.setFixedSize(48, 48)
+        self.album_button.setFixedSize(48, 48)
 
         # 搜索占位符
         self.placeholder_widget = SearchBarLayoutPlaceholder(self)
@@ -62,7 +49,7 @@ class _ToolBar(ToolBar):
         # self.more_button.setIconSize(QSize(48, 48))
         self.more_button.setFixedSize(48, 48)
 
-        layout.addWidget(self.image_button)
+        layout.addWidget(self.album_button)
         layout.addStretch()
         layout.addWidget(self.placeholder_widget)
         layout.addWidget(self.more_button)
@@ -71,19 +58,31 @@ class _ToolBar(ToolBar):
         self.placeholder = self.placeholder_widget
 
 class TitleBar(QWidget):
+    search = Signal(dict)
+    btn_more_clicked = Signal()
+    btn_album_clicked = Signal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self.title = None
         self.action_widget = None
         self.tool_bar = None
-        self._first_refresh = False
-        self.search_bar = _ToolBar(self)
+        self.search_bar = None
 
         self.row_layout = None
 
+        self.logger = None
+
+        self._first_refresh = False
+
         self.setup_()
         self.setup_ui()
+
+    def setup(self, logger):
+        self.logger = logger
+
+        self.setup_signal()
 
     def setup_(self):
         self.setFixedHeight(112)
@@ -91,7 +90,7 @@ class TitleBar(QWidget):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 24, 8, 0)
+        layout.setContentsMargins(4, 4, 4, 0)
 
         # 窗口操作按钮（浮动叠加层）
         self.action_widget = TopWindowActionButtonsWidget(self)
@@ -104,69 +103,26 @@ class TitleBar(QWidget):
 
         # 水平布局：标题 + 工具栏（自动拉伸）
         self.row_layout = QHBoxLayout()
-        self.row_layout.setContentsMargins(0, 0, 0, 0)
+        self.row_layout.setContentsMargins(0, 0, 8, 0)
         self.row_layout.setSpacing(8)
         self.row_layout.addWidget(self.title)
         self.row_layout.addWidget(self.tool_bar)
 
+        layout.addWidget(self.action_widget)
         layout.addLayout(self.row_layout)
         layout.addStretch()
 
-        if __debug__:
-            self.setStyleSheet("""
-                TitleBar {
-                    background-color: #2c3e50;
-                    border: none;
-                }
-                #TitleToolBar {
-                    background-color: transparent;
-                    border: none;
-                }
-                
-                #SearchCloseBtn, #SearchCloseBtn, #ImageButton, #MoreButton, #SearchPlaceholder {
-                    min-width: 48px;
-                    min-height: 48px;
-                    max-width: 48px;
-                    max-height: 48px;
-                    border-radius: 24px;
-                    border: none;
-                    background-color: transparent;
-                }
-                #SearchCloseBtn, #ImageButton:hover, #MoreButton:hover, #SearchPlaceholder:hover {
-                    background-color: rgba(255,255,255,0.1);
-                }
-                /* 搜索栏本身 */
-                #searchBar {
-                    background-color: white;
-                    border-radius: 4px;
-                }
-                #searchLineEdit {
-                    border: 1px solid #ccc;
-                    border-radius: 4px;
-                    padding: 4px 8px;
-                    font-size: 14px;
-                    background: white;
-                }
-                #searchCloseBtn {
-                    min-width: 24px; max-width: 24px;
-                    min-height: 24px; max-height: 24px;
-                    border: none; background: transparent;
-                    font-size: 14px; color: #888;
-                }
-                #searchCloseBtn:hover {
-                    color: #333; background-color: #eee;
-                    border-radius: 4px;
-                }
-            """)
+    def setup_signal(self):
+        def connector(signal, slot):
+            try:
+                signal.connect(slot)
+            except AttributeError:
+                self.logger.warning(
+                    format_exc()
+                )
 
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        # 仅需要更新浮动操作按钮的位置
-        if self.action_widget:
-            self.action_widget.setGeometry(
-                0, self.action_widget.window_border_top_right_radius,
-                self.width(), self.action_widget.height()
-            )
+        connector(self.tool_bar.album_button.clicked, self.btn_album_clicked)
+        connector(self.tool_bar.more_button.clicked, self.btn_more_clicked)
 
     def showEvent(self, event):
         super().showEvent(event)

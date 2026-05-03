@@ -30,7 +30,7 @@ class TopWindowActionButtonsWidget(QWidget):
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        layout.setSpacing(6)
         self.setLayout(layout)
 
         # layout.addWidget(self.left_placeholder)

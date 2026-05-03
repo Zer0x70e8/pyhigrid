@@ -25,6 +25,8 @@ class CloseButton(QPushButton):
     def __init__(self, parent=None):
         """Initialize the close button with a cross icon."""
         super().__init__(parent)
+        self.setObjectName(type(self).__name__)
+
         self.clicked.connect(lambda: self.window().close())
         self.setText("\u2715")  # multiplication sign (✕)
 
@@ -51,6 +53,8 @@ class MaximizeButton(QPushButton):
         :param margin: Margin around the button (currently unused, kept for compatibility).
         """
         super().__init__(parent)
+        self.setObjectName(type(self).__name__)
+
         # Icons: (maximize, restore) using Unicode symbols
         self.icons = ("\U0001F5D7", "\U0001F5D6")   # 🗗 (maximize), 🗖 (restore)
         self.setText(self.icons[1])                 # Initially show restore icon
@@ -169,6 +173,8 @@ class MinimizeButton(QPushButton):
     def __init__(self, parent=None):
         """Initialize the minimize button with a dash icon."""
         super().__init__(parent)
+        self.setObjectName(type(self).__name__)
+
         self.clicked.connect(lambda: self.window().showMinimized())
         self.setText("\U0001F5D5")  # minimize symbol
 
@@ -179,6 +185,8 @@ class PinButton(QPushButton):
     def __init__(self, parent=None):
         """Initialize the pin button with two states: unpinned and pinned."""
         super().__init__(parent)
+        self.setObjectName(type(self).__name__)
+
         self.texts = ("\U0001F4CC\uFE0E", "\U0001F4CC\uFE0E\u20E0")  # (unpinned, pinned)
         self.setText(self.texts[0])
         self.clicked.connect(self.toggle_stay)
@@ -208,6 +216,8 @@ class FoldButton(QPushButton):
     def __init__(self, parent=None):
         """Initialize the fold button with two states: folded and unfolded."""
         super().__init__(parent)
+        self.setObjectName(type(self).__name__)
+
         self.texts = ("\u23F7", "\u23F5")  # (unfolded icon, folded icon)
         self.is_folded = False
         self.setText(self.texts[0])

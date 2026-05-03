@@ -1,14 +1,17 @@
 #
 """"""
 
+from logging import Logger
+from traceback import format_exc
 from typing_extensions import Callable
 
 from PySide6.QtCore import Qt, Signal, QRect, QPropertyAnimation  # , QPoint
 from PySide6.QtGui import QMouseEvent
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QPushButton
+from PySide6.QtWidgets import (QWidget, QHBoxLayout, QLineEdit,
+                               QPushButton, QFrame, QComboBox
+                               )
 
-# from ..anim.search_bar_anim import Anim
-from pyhigrid.ui.gui.anim.search_bar_anim import Anim
+from ..anim.search_bar_anim import Anim
 
 class SearchBarLayoutPlaceholder(QWidget):
     clicked = Signal()
@@ -25,8 +28,9 @@ class SearchBarLayoutPlaceholder(QWidget):
         super().mousePressEvent(event)
 
 
-class SearchBar(QWidget):
+class SearchBar(QFrame):
     closed = Signal()
+    search = Signal(dict)
 
     def __init__(self, parent=None, placeholder: SearchBarLayoutPlaceholder = None):
         super().__init__(parent)
@@ -34,12 +38,20 @@ class SearchBar(QWidget):
         self.setObjectName("SearchBar")
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 0, 8, 0)
-        layout.setSpacing(8)
+        layout.setContentsMargins(8, 0, 0, 0)
+        layout.setSpacing(0)
 
-        self.line_edit = QLineEdit()
+        self.line_edit: QLineEdit = QLineEdit()
         self.line_edit.setPlaceholderText("search...")
         self.line_edit.setObjectName("SearchLineEdit")
+
+        self.option_combo = QComboBox()
+        self.option_combo.setObjectName("SearchOptionCombo")
+        if __debug__:
+            self.option_combo.addItems(["all", "test1", "test2"])
+
+        self.search_btn: QPushButton = QPushButton("🔍")
+        self.search_btn.setObjectName("SearchSearchBtn")
 
         self.close_btn: QPushButton = QPushButton("✕")
         self.close_btn.setObjectName("SearchCloseBtn")
@@ -47,19 +59,32 @@ class SearchBar(QWidget):
         self.close_btn.clicked.connect(self.closed.emit)
 
         layout.addWidget(self.line_edit)
+        layout.addWidget(self.option_combo)
+        layout.addWidget(self.search_btn)
         layout.addWidget(self.close_btn)
 
+        self.line_edit.returnPressed.connect(self._trigger_search)
+        self.search_btn.clicked.connect(self._trigger_search)
+
+    def _trigger_search(self):
+        data = {
+            "text": self.line_edit.text().strip(),
+            "option": self.option_combo.currentData(),    # or currentText()
+        }
+        self.search.emit(data)
 
 class ToolBar(QWidget):
     layout_squeezed = Signal(bool)
     extend_search_bar = Signal()
     folded_search_bar = Signal()
+    search = Signal(dict)
     
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self._placeholder = None
         self._search_bar = None
+        self._logger = None
         self.anim = None
 
         self.is_expanded = False
@@ -87,6 +112,25 @@ class ToolBar(QWidget):
     @disable_amin.setter
     def disable_amin(self, value: bool):
         self._disable_amin = value
+
+    @property
+    def logger(self):
+        return self._logger
+    @logger.setter
+    def logger(self, value: Logger):
+        self._logger = value
+
+    def connect_search_signal(self):
+        def connector(signal, slot):
+            try:
+                signal.connect(slot)
+            except AttributeError:
+                if self._logger is not None:
+                    self._logger.warning(format_exc())
+                else:
+                    print(format_exc())
+
+        connector(self.search_bar.search, self.search.emit)
 
     def expand_search(self):
         """（主动）展开搜索栏"""
@@ -268,7 +312,6 @@ class ToolBar(QWidget):
                 self.anim.update_target_rect(new_target)
 
 
-# ========== 简单测试 ==========
 if __name__ == '__main__':
     import sys
     from PySide6.QtWidgets import QApplication, QVBoxLayout
