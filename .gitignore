@@ -17,3 +17,6 @@ eggs/
 
 #my tool
 tree.py
+
+# Test folder
+test/
