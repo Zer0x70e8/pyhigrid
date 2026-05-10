@@ -170,15 +170,20 @@ class ImporterRepo:
         return cur.fetchone()
 
     def import_asset(self, file_path: Path, thumb_paths: Optional[dict] = None) -> bool:
+        conn = self._connect()
+        # 显式开启事务
+        conn.execute("BEGIN IMMEDIATE")
         try:
             file_path = file_path.resolve()
             ext = file_path.suffix.lower()
             if ext not in SUPPORTED_EXTENSIONS:
+                conn.rollback()
                 return False
 
             file_hash = self._compute_file_hash(file_path)
             existing = self._asset_exists_by_hash(file_hash)
             if existing and not existing['is_deleted']:
+                conn.rollback()
                 return False
 
             exif_info = self._extract_exif(file_path)
@@ -186,30 +191,20 @@ class ImporterRepo:
             mime_type = self._get_mime_type(ext)
             file_size = file_path.stat().st_size
 
-            # 缩略图：外部优先，否则内置生成
-            if thumb_paths is not None:
-                thumb_path = thumb_paths.get('thumb_path')
-                thumb_small = thumb_paths.get('thumb_small_path')
-                thumb_medium = thumb_paths.get('thumb_medium_path')
-                if thumb_path and not Path(thumb_path).exists():
-                    thumb_path = None
-                if thumb_small and not Path(thumb_small).exists():
-                    thumb_small = None
-                if thumb_medium and not Path(thumb_medium).exists():
-                    thumb_medium = None
+            # 处理缩略图（如果失败，及时清理）
+            generated_thumb_paths = {}
+            if thumb_paths is None:
+                generated_thumb_paths = self._generate_thumbnails(file_path, asset_uuid, mime_type) or {}
             else:
-                paths = self._generate_thumbnails(file_path, asset_uuid, mime_type)
-                if paths:
-                    thumb_path = paths.get('thumb_path')
-                    thumb_small = paths.get('thumb_small_path')
-                    thumb_medium = paths.get('thumb_medium_path')
-                else:
-                    thumb_path = None
-                    thumb_small = None
-                    thumb_medium = None
+                generated_thumb_paths = thumb_paths
 
+            thumb_path = generated_thumb_paths.get('thumb_path')
+            thumb_small = generated_thumb_paths.get('thumb_small_path')
+            thumb_medium = generated_thumb_paths.get('thumb_medium_path')
+
+            # 插入或恢复资产
             if existing and existing['is_deleted']:
-                self._connect().execute(
+                conn.execute(
                     """UPDATE assets SET
                         uuid = ?, file_path = ?, thumb_path = ?, thumb_small_path = ?,
                         thumb_medium_path = ?, original_name = ?, mime_type = ?,
@@ -226,7 +221,7 @@ class ImporterRepo:
                 )
                 asset_id = existing['id']
             else:
-                cur = self._connect().execute(
+                cur = conn.execute(
                     """INSERT INTO assets
                         (uuid, file_path, thumb_path, thumb_small_path, thumb_medium_path,
                          original_name, mime_type, file_hash, file_size, width, height,
@@ -239,22 +234,31 @@ class ImporterRepo:
                 )
                 asset_id = cur.lastrowid
 
-            # 默认相簿关联
+            # 关联到内置相簿（album_assets 有唯一约束，INSERT OR IGNORE 真正生效）
             album_ids = self._get_builtin_album_ids()
-            for album_type in (ALBUM_ALL_PHOTOS, ALBUM_UNORGANIZED):
-                alb_id = album_ids.get(album_type)
+            for album_uuid in (ALBUM_ALL_PHOTOS, ALBUM_UNORGANIZED):
+                alb_id = album_ids.get(album_uuid)
                 if alb_id:
-                    self._connect().execute(
+                    conn.execute(
                         """INSERT OR IGNORE INTO album_assets
                             (album_id, asset_id, asset_taken_at)
                          VALUES (?, ?, ?)""",
                         (alb_id, asset_id, exif_info['taken_at'])
                     )
-            self._connect().commit()
+
+            conn.commit()
             return True
-        except Exception as e:
-            print(f"Error importing {file_path}: {e}")
-            return False
+
+        except Exception:
+            conn.rollback()
+            # 出错时清理本次可能生成的多余缩略图
+            for p in generated_thumb_paths.values():
+                try:
+                    if p and os.path.exists(p):
+                        os.remove(p)
+                except Exception:
+                    pass
+            raise  # 或者返回 False，取决于你希望上层如何处理
 
     def import_directory(self, directory: Path, recursive: bool = True) -> int:
         count = 0
