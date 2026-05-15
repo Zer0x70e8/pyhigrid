@@ -4,10 +4,10 @@
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QBitmap, QPainter
 
-from ..widget.album_scroll_widget import VirtualScrolledWidget
+from ..widget.album_scroll_widget import AlbumScrollWidget, AssetImageProvider
 
 
-class Content(VirtualScrolledWidget):
+class Content(AlbumScrollWidget):
     item_double_clicked = Signal(int)
     item_selection_changed = Signal(int, bool)   # index, selected
     def __init__(self, parent=None):
@@ -30,6 +30,8 @@ class Content(VirtualScrolledWidget):
     def _setup(self):
         self.set_wheel_inverted(True)
         self.setFocusPolicy(Qt.StrongFocus)   # 确保键盘滚动有效
+
+        self.provider = AssetImageProvider(None)
 
     def _update_mask(self):
         """根据当前窗口大小生成圆角遮罩"""

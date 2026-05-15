@@ -1,19 +1,30 @@
-# album_scroll_widget.py
-"""
-Virtual scrolling widget for displaying a grid of images (or placeholders) asynchronously.
+#
+""""""
 
-This module provides a `VirtualScrolledWidget` that supports smooth pixel-level scrolling over
-a virtually infinite list of items, rendered in a grid layout. Each item is represented by a `Unit`
-(QLabel) that loads its content asynchronously via a thread pool and a user-provided image provider
-function. The widget reuses `Unit` objects to minimise memory usage and only manages those currently
-visible in the viewport.
-"""
+import os
+from collections import OrderedDict
+from typing import Final, Callable, Set, Optional, List, Dict
 
-from typing import List
-
+from PySide6.QtGui import QImage, QPixmap, QPainter, QFont, QColor, QImageReader
 from PySide6.QtWidgets import QWidget, QLabel
-from PySide6.QtGui import QPixmap, QPainter, QFont, QColor, QImage
-from PySide6.QtCore import QThreadPool, QRunnable, Signal, QObject, Slot, Qt
+from PySide6.QtCore import Qt, Signal, QThreadPool, Slot, QObject, QRunnable, QMutex, QMutexLocker
+
+from pyhigrid.schemas.enums import AlbumAssetSortOption, AssetImageType
+
+WHEEL_INVERTED: Final[bool] = False
+
+TOTAL_CONTENT_HEIGHT: Final[int] = 0
+CACHE_POOL_MAX_ITEM_NUMBER: Final[int] = 20
+DEFAULT_COLUMN_COUNT: Final[int] = 5
+OVERSCROLL_TOP_MAX: Final[int] = 0
+MAX_ITEM_INDEX: Final[int] = 1_000_000  # use for test
+SCROLL_LINE_FRACTION: Final[int] = 10  # 无参数时滚动距离为视口高度的 1/N（这里 N=10）
+FALLBACK_CELL_SIZE: Final[int] = 100  # 当控件宽度无效时的单元格大小回退值
+WHEEL_DELTA_BASE: Final[int] = 120  # Qt 鼠标滚轮标准  # 极少需要改
+
+WHEEL_PIXEL_STEP: Final[int] = 30
+ENABLE_PERCENTAGE_BASED_CELL_ROW_SCROLLING: Final[bool] = False
+PERCENTAGE_BASED_CELL_ROW_SCROLLING_STEP: Final[float] = 0.5  # 每次滚动半个单元格高度
 
 
 def image_provider(number, size=256) -> QImage:
@@ -53,12 +64,12 @@ def image_provider(number, size=256) -> QImage:
     return img
 
 
-class _ImageLoadTaskSignals(QObject):
+class ImageLoadTaskSignals(QObject):
     """Signals for the image loading task."""
     finished = Signal(object, object)  # number, QImage
 
 
-class _ImageLoadTask(QRunnable):
+class ImageLoadTask(QRunnable):
     """
     Worker task that calls the image provider function and emits the result.
     The task is executed in a thread pool to avoid blocking the GUI thread.
@@ -73,7 +84,7 @@ class _ImageLoadTask(QRunnable):
         super().__init__()
         self.number = number
         self.func = func
-        self._signals = _ImageLoadTaskSignals()
+        self._signals = ImageLoadTaskSignals()
 
     @property
     def signals(self):
@@ -86,112 +97,262 @@ class _ImageLoadTask(QRunnable):
         self._signals.finished.emit(self.number, image)
 
 
-class Unit(QLabel):
-    """
-    A single display cell that asynchronously loads and displays an image.
-    Each Unit holds a reference to an image provider function and its current index.
-    When the index is set, a thread-pool task is started to generate the image,
-    and the result is applied on the main thread.
-    """
-
+class Cell(QLabel):
     clicked = Signal(int)  # index
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: "AlbumScrollWidgetBasic"):
         super().__init__(parent)
-        self._image_provider = None  # Callable that generates a QImage given an index
-        self.current_number = None  # The index this unit is currently showing (or assigned)
-        self._pool = QThreadPool.globalInstance()
+
+        # Qt about
         self.setScaledContents(True)  # Scale the pixmap to fill the label
 
-    def set_index(self, index):
+        #
+        self._index: Optional[int] = None  # The index this unit is currently showing (or assigned)]
+        # Callable that generates a QImage given an index
+        self._provider: Optional["AssetImageProvider"] = None
+        self._pool = QThreadPool.globalInstance()
+
+    @property
+    def index(self):
+        return self._index
+
+    @index.setter
+    def index(self, idx):
         """
         Assign a new index and initiate asynchronous image loading.
         If no image provider is set, this does nothing.
 
         Args:
-            index: The numeric index to display.
+            idx: The numeric index to display.
         """
-        if self._image_provider is None:
-            return
-        self.current_number = index
-        task = _ImageLoadTask(index, self._image_provider)
-        task.signals.finished.connect(self._on_image_loaded)
-        self._pool.start(task)
+        self._index = idx
+        if self._provider and idx is not None:
+            # 任务用 lambda 捕获 provider 和 idx，因为 get_thumbnail 是线程安全方法
+            task = ImageLoadTask(idx, lambda i: self._provider.get_thumbnail(i))
+            task.signals.finished.connect(self._on_image_loaded)
+            self._pool.start(task)
 
     @Slot(object, object)
     def _on_image_loaded(self, number, image: QImage):
-        """
-        Slot called when the image generation task finishes.
-        Only applies the image if the unit still corresponds to the same index,
-        preventing out-of-date results from updating the widget.
+        if number == self._index and not image.isNull():
+            self.setPixmap(QPixmap.fromImage(image))
 
-        Args:
-            number: The index the image was generated for.
-            image: The generated QImage.
-        """
-        if number != self.current_number:
-            return
-        # Convert QImage to QPixmap on the main thread (safe).
-        pixmap = QPixmap.fromImage(image)
-        self.setPixmap(pixmap)
 
-    def mousePressEvent(self, event):
-        if self.current_number is not None:
-            self.clicked.emit(self.current_number)
-        super().mousePressEvent(event)
-
-class VirtualScrolledWidget(QWidget):
+class AssetImageProvider(QObject):
     """
-    A virtual scrolling widget that arranges an infinitely large grid of items
-    (displayed as Unit objects) and supports pixel-level smooth scrolling.
-
-    Characteristics:
-    - Only a small number of Unit widgets are created and recycled, keeping memory usage low.
-    - Images are loaded asynchronously via a thread pool.
-    - Scrolling can be performed with the mouse wheel, keyboard, or programmatically.
-    - The number of columns can be changed dynamically, and the scroll position adjusts to keep
-      the same visual region stable.
+    为虚拟滚动组件提供缩略图的异步数据源。
+    所有会在工作线程调用的方法都设计为线程安全（除 GUI 回调）。
     """
 
+    def __init__(self, album_repo, thumbnail_type: AssetImageType = AssetImageType.THUMB_SMALL):
+        super().__init__()
+        self._repo = album_repo
+        self._thumbnail_type = thumbnail_type  # 决定使用哪个缩略图字段及尺寸
+        self._items: List[Dict] = []  # 缓存的全量资产简要信息
+        self._mutex = QMutex()
+        self._cache: OrderedDict[int, QImage] = OrderedDict()
+        self._max_cache = 200  # 最多缓存 200 张缩略图
+
+    # ---------- 数据加载 ----------
+    def load_album(self, album_id: int, sort_by: AlbumAssetSortOption = AlbumAssetSortOption.TAKEN_AT):
+        """加载指定相簿的全部资产 ID 和路径信息（工作线程或主线程均可，完成后更新列表）"""
+        # 这里调用 repo 获取全量（对于超大相簿，repo 可能需要调整，见下文说明）
+        assets = self._repo.get_album_assets(album_id, sort_by, limit=0)  # 假设 limit=0 返回全部
+        # 如果 repo 不支持全量，可改为循环分页拉取
+        new_items = []
+        for a in assets:
+            new_items.append({
+                'id': a['id'],
+                'file_path': a['file_path'],
+                'thumb_small': a.get('thumb_small_path'),
+                'thumb_medium': a.get('thumb_medium_path'),
+                'thumb_large': a.get('thumb_path'),
+                'mime_type': a['mime_type'],
+                'width': a['width'],
+                'height': a['height']
+            })
+        with QMutexLocker(self._mutex):
+            self._items = new_items
+            self._cache.clear()
+        # 通知外界总数变化（主线程通过信号，但可直接由调用方负责刷新 UI）
+        # 我们暴露 total_items 属性供虚拟滚动查询
+
+    @property
+    def total_items(self) -> int:
+        with QMutexLocker(self._mutex):
+            return len(self._items)
+
+    # ---------- 缩略图生成（工作线程调用） ----------
+    def get_thumbnail(self, index: int) -> QImage:
+        """根据全局索引生成/加载缩略图。线程安全。"""
+        # 1. 查缓存
+        with QMutexLocker(self._mutex):
+            if index in self._cache:
+                # 移动到最后（LRU）
+                img = self._cache.pop(index)
+                self._cache[index] = img
+                return img
+
+            if index < 0 or index >= len(self._items):
+                return self._create_placeholder(index)
+
+            item = self._items[index]
+
+        # 2. 优先使用已存在的缩略图文件
+        thumb_path = self._get_thumb_path(item)
+        if thumb_path and os.path.isfile(thumb_path):
+            img = self._load_image(thumb_path)
+            if not img.isNull():
+                self._add_to_cache(index, img)
+                return img
+
+        # 3. 回退：用原图实时生成缩略图（不阻塞 UI，已在工作线程）
+        #    这里可以根据 mime_type 决定是否只处理图片
+        if item['file_path'] and os.path.isfile(item['file_path']):
+            img = self._generate_thumbnail_from_original(item['file_path'])
+            if not img.isNull():
+                self._add_to_cache(index, img)
+                return img
+
+        # 4. 完全失败：返回占位图
+        return self._create_placeholder(index)
+
+    def _get_thumb_path(self, item: Dict) -> Optional[str]:
+        """根据当前缩略图类型返回可能存在的文件路径"""
+        if self._thumbnail_type == AssetImageType.THUMB_SMALL:
+            return item['thumb_small']
+        elif self._thumbnail_type == AssetImageType.THUMB_MEDIUM:
+            return item['thumb_medium']
+        elif self._thumbnail_type == AssetImageType.THUMB_LARGE:
+            return item['thumb_large']
+        return None
+
+    @staticmethod
+    def _load_image(path: str) -> QImage:
+        """安全读取图像文件（工作线程可用）"""
+        reader = QImageReader(path)
+        reader.setAutoTransform(True)
+        return reader.read()
+
+    def _generate_thumbnail_from_original(self, original_path: str) -> QImage:
+        """使用原图生成指定尺寸的缩略图"""
+        max_size = self._thumbnail_type.max_size
+        if max_size is None:
+            max_size = 256  # 原图类型不应该走这里，但保留 fallback
+        reader = QImageReader(original_path)
+        reader.setAutoTransform(True)
+        # 根据原图尺寸计算等比缩放
+        orig_size = reader.size()
+        if orig_size.isValid():
+            scaled = orig_size.scaled(max_size, max_size, Qt.KeepAspectRatio)
+            reader.setScaledSize(scaled)
+        return reader.read()
+
+    def _add_to_cache(self, index: int, img: QImage):
+        with QMutexLocker(self._mutex):
+            self._cache[index] = img
+            while len(self._cache) > self._max_cache:
+                self._cache.popitem(last=False)  # 删除最久未用
+
+    @staticmethod
+    def _create_placeholder(index: int) -> QImage:
+        """生成一个显示索引数字的占位图（复用你原来的 image_provider 逻辑）"""
+        # 直接调用你已有的 image_provider 函数，或者内联简单绘制
+        return image_provider(index)
+
+
+class AlbumScrollWidgetBasic(QWidget):
     scroll_changed = Signal(int)
     unit_clicked = Signal(int)
+
+    class Pool:
+        def __init__(self, max_size=20, factory: Callable = None):
+            self._pool: Set[Cell] = set()
+            self.max_size = max_size
+            self.factory = factory
+
+        @property
+        def pool(self) -> Set[Cell]:
+            return self._pool
+
+        def acquire(self):
+            """从池中取出一个，如果没有就用 factory 创建新的"""
+            if self._pool:
+                return self._pool.pop()
+            if self.factory is None:
+                raise RuntimeError("Pool is empty and no factory provided")
+            return self.factory() if self.factory else None
+
+        def release(self, obj):
+            """将对象放回池中，若超过最大容量则随机销毁"""
+            obj: Cell
+
+            # obj.reset()  # 清理对象状态
+
+            obj.hide()
+            # Clear the pixmap and mark as unused
+            obj.clear()
+            obj.index = None
+            obj.clicked.disconnect()
+            obj._provider = None
+
+            self._pool.add(obj)
+            while len(self._pool) > self.max_size:
+                old = self._pool.pop()
+                old.deleteLater()
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self._single_row_num = 5  # Number of columns (items per row)
-        self._max_cached_units = 20  # Maximum number of recycled Unit objects to keep
-
-        self._scroll_y = 0.0
-        # Current vertical offset of the content top relative to viewport top (pixels)
-        self._total_content_height = 0
-        # Total virtual height of all content (computed based on row count and cell size)
-
-        self._image_units: List[Unit] = []  # Currently visible/active Unit instances
-        self._image_units_reuse_pool: List[Unit] = []  # Pool of detached Unit instances for reuse
-
-        # Cached visible row range to quickly determine which rows need Units
-        self._visible_row_start = 0
-        self._visible_row_end = 0
-
+        # Qt about
         # Enable keyboard focus to receive key events for scrolling
         self.setFocusPolicy(Qt.StrongFocus)
 
-        # Scrolling step per wheel delta unit (120 delta = one "notch")
-        self._wheel_pixel_step = 30
-        self.overscroll_top = 0   # 顶部允许的最大空白像素，设为0则关闭效果
+        #
+        self._pool = self.Pool(
+            CACHE_POOL_MAX_ITEM_NUMBER,
+            lambda: Cell(self),
+        )
+        self._provider: Optional[AssetImageProvider] = None
 
-        # Flag to invert the mouse wheel direction
-        self._wheel_inverted = False
+        # temp
+        self._scroll_y = 0.0
+        # Current vertical offset of the content top relative to viewport top (pixels)
+
+        self._image_cells = []
+
+        # Cached visible row range to quickly determine which rows need Cells
+        self._visible_row_start = 0
+        self._visible_row_end = 0
+        self._max_item_index = MAX_ITEM_INDEX
+
+        # Configurable attr
+        # Total virtual height of all content (computed based on row count and cell size)
+        self._total_content_height = TOTAL_CONTENT_HEIGHT
+        # Scrolling step per wheel delta cell (120 delta = one "notch")
+        self._wheel_pixel_step = WHEEL_PIXEL_STEP
+        self.overscroll_top = OVERSCROLL_TOP_MAX  # 顶部允许的最大空白像素，设为0则关闭效果
+        self.single_row_num = DEFAULT_COLUMN_COUNT  # 每行项目数
+        self.fallback_cell_size = FALLBACK_CELL_SIZE
 
         # alias
-        self.layout_ = self._update_visible_units
+        self.layout_ = self._update_visible_cells
 
+    @property
+    def provider(self) -> Optional[AssetImageProvider]:
+        return self._provider
+
+    @provider.setter
+    def provider(self, value: Optional[AssetImageProvider]):
+        self._provider = value
+
+    # signal
     def _on_unit_clicked(self, index: int):
         """内部槽：当任意 Unit 被点击时，转发该信号"""
         self.unit_clicked.emit(index)
 
-    def _get_unit_size(self) -> int:
+    # calculate
+    def _get_cell_size(self) -> int:
         """
         Calculate the side length of a single grid cell based on the widget's current width
         and the configured number of columns.
@@ -200,22 +361,9 @@ class VirtualScrolledWidget(QWidget):
             A positive integer representing the cell size in pixels.
         """
         w = self.contentsRect().width()
-        if w <= 0:
-            return 100  # fallback size when widget has no valid width
-        return w // self._single_row_num
-
-    def _update_total_height(self):
-        """
-        Recompute the total virtual content height based on the assumed number of data rows
-        and the current cell size. In a real application, this should use the actual total
-        number of rows/lines of data. Here, for demonstration, a very large row count is fixed
-        to simulate an infinite list.
-        """
-        # For demonstration we assume a huge number of rows (1,000,000).
-        # In practice, replace this with the actual data row count.
-        total_rows = 1000000
-        unit_sz = self._get_unit_size()
-        self._total_content_height = total_rows * unit_sz
+        if w <= 0:  # if widget has no valid width
+            return self.fallback_cell_size  # fallback size
+        return w // self.single_row_num
 
     def _index_to_row_col(self, idx: int):
         """
@@ -227,8 +375,8 @@ class VirtualScrolledWidget(QWidget):
         Returns:
             A tuple (row, col) where both are zero-based.
         """
-        row = idx // self._single_row_num
-        col = idx % self._single_row_num
+        row = idx // self.single_row_num
+        col = idx % self.single_row_num
         return row, col
 
     def _row_col_to_index(self, row: int, col: int):
@@ -242,182 +390,298 @@ class VirtualScrolledWidget(QWidget):
         Returns:
             The global item index.
         """
-        return row * self._single_row_num + col
+        return row * self.single_row_num + col
 
-    def _update_visible_units(self):
+    # flush
+    def _update_total_height(self):
+        total_items = self._max_item_index + 1 if self._max_item_index is not None else 0
+        total_rows = (total_items + self.single_row_num - 1) // self.single_row_num
+        cell_sz = self._get_cell_size()
+        self._total_content_height = total_rows * cell_sz
+        self._total_rows = total_rows
+
+    def _update_visible_cells(self):
         """
-        Update the set of Unit widgets to only show those that are visible in the current viewport.
+        Update the set of cell widgets to only show those that are visible in the current viewport.
         Steps:
             1. Determine the range of rows currently intersecting the viewport.
             2. Compute the set of global indices that should be visible.
-            3. Detach and hide units that are no longer needed, moving them to the reuse pool.
-            4. Create or recycle Unit instances for the new visible indices.
-            5. Position and show each visible unit.
+            3. Detach and hide cells that are no longer needed, moving them to the reuse pool.
+            4. Create or recycle cell instances for the new visible indices.
+            5. Position and show each visible cell.
         """
+
+        # precheck
         if not self.isVisible():
             return
 
-        unit_sz = self._get_unit_size()
-        if unit_sz <= 0:
+        cell_sz = self._get_cell_size()
+        if cell_sz <= 0:
             return
 
+        #
         rect = self.contentsRect()
         viewport_h = rect.height()
 
         # 1. Calculate the range of rows that are visible
-        first_visible_row = max(0, int(self._scroll_y // unit_sz))
+        first_visible_row = max(0, int(self._scroll_y // cell_sz))
         # Bottom Y coordinate of the content that is visible
         bottom_y = self._scroll_y + viewport_h
-        last_visible_row = int((bottom_y + unit_sz - 1) // unit_sz)
+        last_visible_row = int((bottom_y + cell_sz - 1) // cell_sz)
         # include the last row partially visible
 
         # Clamp to the total number of rows (using the fixed huge number)
-        total_rows = 1000000 if self._total_content_height > 0 else 0
+        total_items = self._max_item_index + 1  # _max_item_index 是最大有效索引
+        if total_items <= 0:
+            return
+        total_rows = (total_items + self.single_row_num - 1) // self.single_row_num
+
         last_visible_row = min(last_visible_row, total_rows - 1)
         if first_visible_row > last_visible_row:
             return
 
+        # Update cache attr
         self._visible_row_start = first_visible_row
         self._visible_row_end = last_visible_row
 
-        # 2. Gather all global indices that need to be displayed
-        needed_indices = set()
-        for row in range(first_visible_row, last_visible_row + 1):
-            for col in range(self._single_row_num):
-                idx = self._row_col_to_index(row, col)
-                needed_indices.add(idx)
+        # 2 & 3.
+        # Release cells that are no longer visible by comparing the current active
+        # cell map against the set of indices required for the current viewport.
+        needed_indices = self._get_all_needed_indices(
+            first_visible_row, last_visible_row
+        )
+        self._clear_cells(
+            self._build_existing_cell_map(),
+            needed_indices
+        )
 
-        # 3. Build a mapping of index to existing active Unit
-        existing_map = {unit.current_number: unit for unit in self._image_units
-                        if unit.current_number is not None}
+        # 4 & 5. Create/reuse cells and lay them out
+        self._update_cells_for_indices(needed_indices, cell_sz)
 
-        # 4. Remove units that are no longer needed (move to reuse pool)
-        for idx, unit in list(existing_map.items()):
-            if idx not in needed_indices:
-                # Remove from active list
-                if unit in self._image_units:
-                    self._image_units.remove(unit)
-                unit.hide()
-                # Clear the pixmap and mark as unused
-                unit.clear()
-                unit.current_number = None
-                # Add to reuse pool
-                self._image_units_reuse_pool.append(unit)
-
-        # Trim reuse pool to the maximum allowed size
-        while len(self._image_units_reuse_pool) > self._max_cached_units:
-            old = self._image_units_reuse_pool.pop(0)
-            old.deleteLater()
-
-        # 5. Add or reuse units for the newly needed indices
-        # Rebuild existing map because it may have changed
-        existing_map = {unit.current_number: unit for unit in self._image_units
-                        if unit.current_number is not None}
-
-        for idx in needed_indices:
-            if idx in existing_map:
-                unit = existing_map[idx]
-            else:
-                # Create a new unit or take one from the reuse pool
-                if self._image_units_reuse_pool:
-                    unit = self._image_units_reuse_pool.pop()
-                else:
-                    unit = Unit(self)
-                unit._image_provider = image_provider  # Set the image generation function
-                unit.current_number = idx
-                unit.set_index(idx)  # Initiate async loading
-                unit.clicked.connect(self._on_unit_clicked, Qt.UniqueConnection)
-                # 使用 UniqueConnection 防止同一个 Unit 被多次连接
-                self._image_units.append(unit)
-
-            # Calculate the position of this unit in the viewport
-            row, col = self._index_to_row_col(idx)
-            x = col * unit_sz
-            y = int(row * unit_sz - self._scroll_y)
-            unit.setGeometry(x, y, unit_sz, unit_sz)
-            unit.show()
-
-    def scroll_by(self, delta_y: float):
+    def _update_cells_for_indices(self, needed_indices, cell_sz):
         """
-        Adjust the vertical scroll position by a given pixel offset.
+        Ensure a Cell is present and correctly positioned for every index in
+        needed_indices. Reuses existing active cells when possible, otherwise
+        acquires from the pool. Connects signals and shows the cell.
 
         Args:
-            delta_y: Positive value scrolls down, negative scrolls up.
+            needed_indices: set of global grid indices that must be visible.
+            cell_sz: current side length of a single cell in pixels.
         """
+        # Rebuild the active cell map (may have changed after recycling)
+        current_map = self._build_existing_cell_map()
+
+        for idx in needed_indices:
+            if idx in current_map:
+                cell = current_map[idx]
+            else:
+                cell: Cell = self._pool.acquire()
+                cell._provider = self._provider
+                cell.index = idx  # triggers async loading
+                cell.clicked.connect(self._on_unit_clicked, Qt.UniqueConnection)
+                self._image_cells.append(cell)
+
+            row, col = self._index_to_row_col(idx)
+            x = col * cell_sz
+            y = int(row * cell_sz - self._scroll_y)
+            cell.setGeometry(x, y, cell_sz, cell_sz)
+            cell.show()
+
+    def update_max_item_index(self, index: int):
+        self._max_item_index = index
+
+    # tool
+    def _get_all_needed_indices(self, first_visible_row, last_visible_row):
+        """Gather all global indices that need to be displayed"""
+        needed_indices = set()
+        for row in range(first_visible_row, last_visible_row + 1):
+            for col in range(self.single_row_num):
+                idx = self._row_col_to_index(row, col)
+                needed_indices.add(idx)
+        return needed_indices
+
+    def _build_existing_cell_map(self):
+        """Build a mapping of index to existing active cell"""
+        cell: Cell
+        return {
+            cell.index: cell for cell in self._image_cells
+            if cell.index is not None
+        }
+
+    def _clear_cells(self, existing_map, needed_indices):
+        """Remove cells that are no longer needed (move to reuse pool)"""
+        for idx, cell in list(existing_map.items()):
+            if idx not in needed_indices:
+                self._release_cell(cell)
+
+    def _release_cell(self, cell):
+        # 从活跃列表移除
+        if cell in self._image_cells:
+            self._image_cells.remove(cell)
+        # 放回复用池
+        self._pool.release(cell)
+
+
+class AlbumScrollWidget(AlbumScrollWidgetBasic):
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # 滚轮相关配置（基础类未初始化）
+        self._wheel_inverted = False
+        self._wheel_pixel_step = WHEEL_PIXEL_STEP  # 使用基础类里定义的常量
+        self._cached_anchor_index: Optional[int] = None
+
+    # ==================== 可配置项 ====================
+    def set_wheel_inverted(self, inverted: bool):
+        self._wheel_inverted = inverted
+
+    def is_wheel_inverted(self) -> bool:
+        return self._wheel_inverted
+
+    def set_wheel_pixel_step(self, step: int):
+        self._wheel_pixel_step = step
+
+    # ==================== 滚动控制接口 ====================
+    def scroll_by(self, delta_y: float):
+        """按像素滚动，正值向下，负值向上。"""
         old_y = self._scroll_y
         new_y = int(old_y + delta_y)
 
-        # Clamp within valid scroll range
+        # 限制滚动范围
         max_scroll = max(0, self._total_content_height - self.contentsRect().height())
-        min_scroll = -self.overscroll_top  # 允许的负向偏移
-
+        min_scroll = -self.overscroll_top
         new_y = max(min_scroll, min(max_scroll, new_y))
 
         if abs(new_y - old_y) < 0.5:
             return
 
         self._scroll_y = new_y
-        self._update_visible_units()
-
-        # Emit scroll signal for external synchronisation (e.g., a scrollbar)
-        self.scroll_changed.emit(new_y)
+        self._after_scroll(new_y)
 
     def scroll_up(self, pixels: float = None):
-        """
-        Scroll upward by a given number of pixels. If no value is provided,
-        scrolls by approximately one-tenth of the viewport height.
-
-        Args:
-            pixels: Pixels to scroll up (positive). Defaults to viewport height / 10.
-        """
         if pixels is None:
-            pixels = self.contentsRect().height() / 10
+            pixels = self.contentsRect().height() / SCROLL_LINE_FRACTION
         self.scroll_by(-pixels)
 
     def scroll_down(self, pixels: float = None):
-        """
-        Scroll downward by a given number of pixels. If no value is provided,
-        scrolls by approximately one-tenth of the viewport height.
-
-        Args:
-            pixels: Pixels to scroll down (positive). Defaults to viewport height / 10.
-        """
         if pixels is None:
-            pixels = self.contentsRect().height() / 10
+            pixels = self.contentsRect().height() / SCROLL_LINE_FRACTION
         self.scroll_by(pixels)
 
-    def set_wheel_inverted(self, inverted: bool):
-        """Set whether the mouse wheel direction is inverted."""
-        self._wheel_inverted = inverted
+    def scroll_to_top(self):
+        self._scroll_y = 0.0
+        self._after_scroll()
 
-    def is_wheel_inverted(self) -> bool:
-        """Return whether the mouse wheel direction is currently inverted."""
-        return self._wheel_inverted
+    def scroll_to_bottom(self):
+        max_scroll = max(0, self._total_content_height - self.contentsRect().height())
+        self._scroll_y = max_scroll
+        self._after_scroll()
 
+    def set_scroll_y(self, y: float):
+        max_scroll = max(0, self._total_content_height - self.contentsRect().height())
+        min_scroll = -self.overscroll_top
+        self._scroll_y = max(min_scroll, min(max_scroll, int(y)))
+        self._after_scroll()
+
+    def get_scroll_y(self) -> float:
+        return self._scroll_y
+
+    # ==================== 动态列数切换 ====================
+    def _after_scroll(self, new_y=None):
+        """每次滚动后的统一收尾：刷新视图 + 缓存新锚点"""
+        self._update_visible_cells()
+        if new_y is not None:
+            self.scroll_changed.emit(new_y)
+        else:
+            self.scroll_changed.emit(self._scroll_y)
+        # 缓存新的锚点索引
+        self._cached_anchor_index = self._compute_viewport_center_index()
+
+    def _compute_viewport_center_index(self) -> Optional[int]:
+        """
+        基于当前的 _scroll_y、视口尺寸、cell 大小，
+        返回视口正中央对应的全局项目索引。
+        """
+        cell_sz = self._get_cell_size()
+        if cell_sz <= 0:
+            return None
+
+        viewport_h = self.contentsRect().height()
+        # 内容坐标中心
+        content_center_y = self._scroll_y + viewport_h / 2
+
+        # 对应的行和列（这里取该行的中间列）
+        row = int(content_center_y // cell_sz)
+        col = self.single_row_num // 2  # 大致中间列
+
+        index = row * self.single_row_num + col
+        # 限制在有效范围
+        if self._max_item_index is not None:
+            index = max(0, min(self._max_item_index, index))
+        return index
+
+    def change_single_row_num(self, new_cols: int):
+        if new_cols == self.single_row_num:
+            return
+
+        anchor = self._cached_anchor_index
+        self.single_row_num = new_cols
+        self._update_total_height()
+
+        if anchor is not None:
+            new_cell_sz = self._get_cell_size()
+            new_row = anchor // self.single_row_num
+            target_y = new_row * new_cell_sz + new_cell_sz / 2
+            new_scroll_y = int(target_y - self.contentsRect().height() / 2)
+        else:
+            new_scroll_y = self._scroll_y
+
+        max_scroll = max(0, self._total_content_height - self.contentsRect().height())
+        self._scroll_y = max(0.0, min(max_scroll, new_scroll_y))
+        self._after_scroll()  # 这里已经包含 _update_visible_cells 和 signal
+
+    # ==================== 窗口大小变化 ====================
+    def resizeEvent(self, event):
+        # 暂时不要做任何与 size 有关的计算！
+        anchor = self._cached_anchor_index
+
+        super().resizeEvent(event)
+        self._update_total_height()
+
+        if anchor is not None:
+            new_cell_sz = self._get_cell_size()
+            new_row = anchor // self.single_row_num
+            # 让锚点项的中心落在视口中心
+            target_y = new_row * new_cell_sz + new_cell_sz / 2
+            new_scroll_y = int(target_y - self.contentsRect().height() / 2)
+        else:
+            new_scroll_y = self._scroll_y
+
+        max_scroll = max(0, self._total_content_height - self.contentsRect().height())
+        self._scroll_y = max(0.0, min(max_scroll, new_scroll_y))
+        self._update_visible_cells()
+        self.scroll_changed.emit(self._scroll_y)
+
+    # ==================== 键鼠事件 ====================
     def wheelEvent(self, event):
-        """Handle mouse wheel events by scrolling the view."""
         delta = event.angleDelta().y()
         if self._wheel_inverted:
             delta = -delta
-        # Convert delta to pixel scroll amount using the configured step
-        step = self._wheel_pixel_step * (delta / 120)
+        step = self._wheel_pixel_step * (delta / WHEEL_DELTA_BASE)
         self.scroll_by(step)
         event.accept()
 
     def keyPressEvent(self, event):
-        """Handle keyboard events for scrolling (arrows, PageUp/Down, Home/End)."""
         key = event.key()
-        unit_sz = self._get_unit_size()
+        cell_sz = self._get_cell_size()
         if key == Qt.Key_Up:
-            self.scroll_by(-unit_sz)
+            self.scroll_by(-cell_sz)
         elif key == Qt.Key_Down:
-            self.scroll_by(unit_sz)
+            self.scroll_by(cell_sz)
         elif key == Qt.Key_PageUp:
-            page_h = self.contentsRect().height()
-            self.scroll_by(-page_h + unit_sz)
+            self.scroll_by(-self.contentsRect().height() + cell_sz)
         elif key == Qt.Key_PageDown:
-            page_h = self.contentsRect().height()
-            self.scroll_by(page_h - unit_sz)
+            self.scroll_by(self.contentsRect().height() - cell_sz)
         elif key == Qt.Key_Home:
             self.scroll_to_top()
         elif key == Qt.Key_End:
@@ -425,101 +689,28 @@ class VirtualScrolledWidget(QWidget):
         else:
             super().keyPressEvent(event)
 
-    def scroll_to_top(self):
-        """Scroll to the top of the content."""
-        self._scroll_y = 0.0
-        self._update_visible_units()
-
-    def scroll_to_bottom(self):
-        """Scroll to the bottom of the content."""
-        max_scroll = max(0, self._total_content_height - self.contentsRect().height())
-        self._scroll_y = max_scroll
-        self._update_visible_units()
-
-    def resizeEvent(self, event):
-        """Handle resize events: recompute content height and update visible units."""
-        super().resizeEvent(event)
-        # Recalculate total height because the cell size may have changed
-        self._update_total_height()
-        # Ensure the current scroll position does not exceed the new maximum
-        max_scroll = max(0, self._total_content_height - self.contentsRect().height())
-        min_scroll = -self.overscroll_top
-        if self._scroll_y > max_scroll:
-            self._scroll_y = max_scroll
-        elif self._scroll_y < min_scroll:
-            self._scroll_y = min_scroll
-        self._update_visible_units()
-
-    def change_single_row_num(self, new_cols: int):
-        """
-        Dynamically change the number of columns (items per row) while trying to
-        maintain the same visual content area centred in the viewport.
-
-        Args:
-            new_cols: The new number of columns. If it is the same as the current
-                      value, nothing happens.
-        """
-        if new_cols == self._single_row_num:
-            return
-
-        # Identify a central index from the currently visible units
-        if self._image_units:
-            visible_indices = [u.current_number for u in self._image_units
-                               if u.current_number is not None]
-            if visible_indices:
-                center_idx = sum(visible_indices) // len(visible_indices)
-                # Compute the Y coordinate of the centre of this index in the old layout
-                old_unit_sz = self._get_unit_size()
-                row_old = center_idx // self._single_row_num
-                center_y_content = row_old * old_unit_sz + old_unit_sz / 2
-                # Offset between viewport centre and content centre
-                viewport_center_y = self._scroll_y + self.contentsRect().height() / 2
-                offset_to_center = center_y_content - viewport_center_y
-            else:
-                offset_to_center = 0
-                center_idx = 0
-        else:
-            offset_to_center = 0
-            center_idx = 0
-
-        # Apply the new column count
-        self._single_row_num = new_cols
-        self._update_total_height()
-
-        # Calculate the new Y coordinate of the same index in the new layout
-        new_unit_sz = self._get_unit_size()
-        new_row = center_idx // self._single_row_num
-        new_center_y = new_row * new_unit_sz + new_unit_sz / 2
-
-        # Re-calculate scroll position so that the offset to the centre remains similar
-        new_scroll_y = int(new_center_y - offset_to_center - self.contentsRect().height() / 2)
-        new_scroll_y = max(0.0, min(
-            self._total_content_height - self.contentsRect().height(), new_scroll_y))
-        self._scroll_y = new_scroll_y
-
-        self._update_visible_units()
-
-    def get_scroll_y(self) -> float:
-        """Return the current vertical scroll offset in pixels."""
-        return self._scroll_y
-
-    def set_scroll_y(self, y: float):
-        """
-        Set the vertical scroll offset to a specific value (clamped to valid range).
-        """
-        self._scroll_y = max(0.0, min
-        (self._total_content_height - self.contentsRect().height(), int(y)))
-        self._update_visible_units()
-
 
 if __name__ == '__main__':
     import sys
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QPushButton, QVBoxLayout
 
     app = QApplication(sys.argv)
 
     # Quick test: create a virtual scrolling widget with inverted wheel direction.
-    w1 = VirtualScrolledWidget()
-    w1.set_wheel_inverted(True)
+    w1 = AlbumScrollWidget()
+    # w1.set_wheel_inverted(True)
     w1.show()
+
+    debug_window = QWidget()
+    layout = QVBoxLayout(debug_window)
+    layout_btn: QPushButton = QPushButton("Layout")
+    layout_btn.clicked.connect(w1.layout_)
+    layout.addWidget(layout_btn)
+    debug_window.setLayout(layout)
+
+    debug_window.show()
+
+    provider = AssetImageProvider(None)
+    w1.provider = provider
+
     exit(app.exec())
