@@ -1,15 +1,21 @@
 #
 """"""
 
+import faulthandler  # , signal
+
 import os
 from collections import OrderedDict
 from typing import Final, Callable, Set, Optional, List, Dict
 
-from PySide6.QtGui import QImage, QPixmap, QPainter, QFont, QColor, QImageReader
+from PySide6.QtGui import QImage, QPixmap, QPainter, QFont, QColor, QImageReader, QPainterPath
 from PySide6.QtWidgets import QWidget, QLabel
-from PySide6.QtCore import Qt, Signal, QThreadPool, Slot, QObject, QRunnable, QMutex, QMutexLocker
+from PySide6.QtCore import Qt, Signal, QThreadPool, Slot, QObject, QRunnable, QMutex, QMutexLocker, QSize
 
 from pyhigrid.schemas.enums import AlbumAssetSortOption, AssetImageType
+
+faulthandler.enable()
+# signal.signal(signal.SIGSEGV, faulthandler.dump_traceback_later)
+
 
 WHEEL_INVERTED: Final[bool] = False
 
@@ -21,6 +27,8 @@ MAX_ITEM_INDEX: Final[int] = 1_000_000  # use for test
 SCROLL_LINE_FRACTION: Final[int] = 10  # 无参数时滚动距离为视口高度的 1/N（这里 N=10）
 FALLBACK_CELL_SIZE: Final[int] = 100  # 当控件宽度无效时的单元格大小回退值
 WHEEL_DELTA_BASE: Final[int] = 120  # Qt 鼠标滚轮标准  # 极少需要改
+
+CORNER_RADIUS: Final[int] = 8
 
 WHEEL_PIXEL_STEP: Final[int] = 30
 ENABLE_PERCENTAGE_BASED_CELL_ROW_SCROLLING: Final[bool] = False
@@ -62,6 +70,41 @@ def image_provider(number, size=256) -> QImage:
     painter.drawText(img.rect(), Qt.AlignCenter, text)
     painter.end()
     return img
+
+
+# ---------- 离屏圆角生成 ----------
+def make_rounded_image(source: QImage, target_size: QSize, radius: int) -> QImage:
+    """将源图缩放、居中裁剪到 target_size，并加上圆角，返回 ARGB32 图片。"""
+    if source.isNull() or target_size.isEmpty():
+        return QImage()
+
+    # 1. 缩放（保持比例，填满目标尺寸）
+    scaled = source.scaled(
+        target_size,
+        Qt.KeepAspectRatioByExpanding,
+        Qt.SmoothTransformation,
+    )
+
+    # 2. 居中裁剪
+    x = (scaled.width() - target_size.width()) // 2
+    y = (scaled.height() - target_size.height()) // 2
+    cropped = scaled.copy(x, y, target_size.width(), target_size.height())
+
+    # 3. 创建透明目标图，绘制圆角路径
+    result = QImage(target_size, QImage.Format_ARGB32_Premultiplied)
+    result.fill(Qt.transparent)
+
+    painter = QPainter(result)
+    painter.setRenderHint(QPainter.Antialiasing, True)
+    path = QPainterPath()
+    path.addRoundedRect(
+        0, 0, target_size.width(), target_size.height(), radius, radius
+    )
+    painter.setClipPath(path)
+    painter.drawImage(0, 0, cropped)
+    painter.end()
+
+    return result
 
 
 class ImageLoadTaskSignals(QObject):
@@ -111,6 +154,7 @@ class Cell(QLabel):
         # Callable that generates a QImage given an index
         self._provider: Optional["AssetImageProvider"] = None
         self._pool = QThreadPool.globalInstance()
+        self._active_task = None  # 跟踪当前加载任务
 
     @property
     def index(self):
@@ -126,16 +170,26 @@ class Cell(QLabel):
             idx: The numeric index to display.
         """
         self._index = idx
+
+        # 取消旧任务
+        if self._active_task is not None:
+            self._active_task.signals.finished.disconnect(self._on_image_loaded)
+            self._active_task = None
+
         if self._provider and idx is not None:
             # 任务用 lambda 捕获 provider 和 idx，因为 get_thumbnail 是线程安全方法
             task = ImageLoadTask(idx, lambda i: self._provider.get_thumbnail(i))
             task.signals.finished.connect(self._on_image_loaded)
+            self._active_task = task
             self._pool.start(task)
 
     @Slot(object, object)
     def _on_image_loaded(self, number, image: QImage):
         if number == self._index and not image.isNull():
             self.setPixmap(QPixmap.fromImage(image))
+        self.setPixmap(QPixmap.fromImage(image))
+        # 任务完成后清除引用（此时连接已触发，可以断开）
+        self._active_task = None
 
 
 class AssetImageProvider(QObject):
@@ -289,9 +343,13 @@ class AlbumScrollWidgetBasic(QWidget):
 
             # obj.reset()  # 清理对象状态
 
+            # if hasattr(obj, '_active_task') and obj._active_task is not None:
+            #     obj._active_task.signals.finished.disconnect(obj._on_image_loaded)
+            #     obj._active_task = None
             obj.hide()
             # Clear the pixmap and mark as unused
-            obj.clear()
+            # obj.clear()
+            obj.setPixmap(QPixmap())  # 清空显示
             obj.index = None
             obj.clicked.disconnect()
             obj._provider = None
@@ -522,6 +580,103 @@ class AlbumScrollWidgetBasic(QWidget):
         self._pool.release(cell)
 
 
+# import traceback
+#
+#
+# def try_exc(func):
+#     def wrapper(*args, **kwargs):
+#         try:
+#             return func(*args, **kwargs)
+#         except Exception:  # noqa
+#             traceback.print_exc()
+#
+#     return wrapper
+#
+#
+# class RoundedCell(Cell):
+#     """继承原 Cell，在线程中把原图处理成圆角图后再显示。"""
+#
+#     def __init__(self, parent: "AlbumScrollWidgetBasic"):
+#         super().__init__(parent)
+#         # 关闭 QLabel 的缩放，因为我们已经给了精确尺寸的 pixmap
+#         self.setScaledContents(False)
+#
+#     @Cell.index.setter
+#     def index(self, idx):
+#         self._index = idx
+#         if self._provider is None or idx is None:
+#             return
+#
+#         # 从父控件获取当前 cell 尺寸和圆角半径（在主线程中安全）
+#         widget = self.parent()
+#         if not isinstance(widget, AlbumScrollWidgetRounded):
+#             # 理论上不会发生
+#             return
+#
+#         cell_sz = widget._get_cell_size()  # noqa
+#         radius = widget.corner_radius
+#
+#         # 将圆角处理直接放到 ImageLoadTask 的 lambda 里，
+#         # 这样缩放+裁剪+圆角都在后台线程完成
+#         task = ImageLoadTask(
+#             idx,
+#             lambda i, sz=cell_sz, r=radius, prov=self._provider: make_rounded_image(
+#                 prov.get_thumbnail(i), QSize(sz, sz), r
+#             ),
+#         )
+#         task.signals.finished.connect(self._on_image_loaded)
+#         self._pool.start(task)
+#
+#
+# class AlbumScrollWidgetRounded(AlbumScrollWidgetBasic):
+#     """带圆角缩略图的 Album 滚动控件。"""
+#
+#     def __init__(self, parent=None):
+#         super().__init__(parent)
+#
+#         # 圆角半径（单位：像素）
+#         self._corner_radius = 8
+#
+#         # 将对象池的工厂函数替换为 RoundedCell
+#         # 注意：这里会清空池中已有的 Cell（如果有）
+#         self._pool = self.Pool(
+#             CACHE_POOL_MAX_ITEM_NUMBER,
+#             lambda: RoundedCell(self),
+#         )
+#
+#     # ---------- 圆角属性 ----------
+#     @property
+#     def corner_radius(self) -> int:
+#         return self._corner_radius
+#
+#     @corner_radius.setter
+#     def corner_radius(self, r: int):
+#         if r != self._corner_radius:
+#             self._corner_radius = r
+#             # 让所有可见 Cell 重新加载（会使用新的半径）
+#             self._reload_visible_cells()
+#
+#     # ---------- 尺寸变化时重新生成圆角图 ----------
+#     @try_exc
+#     def resizeEvent(self, event):
+#         old_size = self._get_cell_size()
+#         super().resizeEvent(event)
+#         new_size = self._get_cell_size()
+#         if new_size != old_size:
+#             # cell 尺寸变了，所有已显示的图片需要以新尺寸重绘
+#             self._reload_visible_cells()
+#
+#     @try_exc
+#     def _reload_visible_cells(self):
+#         """强制所有当前显示的 Cell 重新加载图片（使用新的 cell size 和圆角半径）。"""
+#         for cell in self._image_cells:
+#             if cell.index is not None:
+#                 # 重新触发加载（会在线程中按当前 cell_size 和 radius 生成新图）
+#                 idx = cell.index
+#                 cell.index = idx   # setter 会启动新任务
+
+
+# class AlbumScrollWidget(AlbumScrollWidgetRounded):
 class AlbumScrollWidget(AlbumScrollWidgetBasic):
 
     def __init__(self, parent=None):
@@ -664,12 +819,35 @@ class AlbumScrollWidget(AlbumScrollWidgetBasic):
 
     # ==================== 键鼠事件 ====================
     def wheelEvent(self, event):
-        delta = event.angleDelta().y()
-        if self._wheel_inverted:
-            delta = -delta
-        step = self._wheel_pixel_step * (delta / WHEEL_DELTA_BASE)
-        self.scroll_by(step)
-        event.accept()
+        # 检测 Ctrl 修饰键
+        if event.modifiers() & Qt.ControlModifier:
+            delta = event.angleDelta().y()
+            # 可根据需要适配反转
+            if self._wheel_inverted:
+                delta = -delta
+
+            # 向上滚（放大）→ 减少列数，向下滚（缩小）→ 增加列数
+            if delta > 0:
+                new_cols = self.single_row_num - 1
+            elif delta < 0:
+                new_cols = self.single_row_num + 1
+            else:
+                return
+
+            # 限制合理范围（例如 1 ~ 20）
+            new_cols = max(1, min(20, new_cols))
+            if new_cols != self.single_row_num:
+                self.change_single_row_num(new_cols)
+
+            event.accept()
+            return
+        else:
+            delta = event.angleDelta().y()
+            if self._wheel_inverted:
+                delta = -delta
+            step = self._wheel_pixel_step * (delta / WHEEL_DELTA_BASE)
+            self.scroll_by(step)
+            event.accept()
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -696,6 +874,14 @@ if __name__ == '__main__':
 
     app = QApplication(sys.argv)
 
+
+    # def notify(a0, a1):
+    #     print(a0, a1)
+    #     return QApplication.notify(app, a0, a1)
+    #
+    #
+    # app.notify = notify
+
     # Quick test: create a virtual scrolling widget with inverted wheel direction.
     w1 = AlbumScrollWidget()
     # w1.set_wheel_inverted(True)
@@ -712,5 +898,7 @@ if __name__ == '__main__':
 
     provider = AssetImageProvider(None)
     w1.provider = provider
+    # w1._max_item_index = 100
+    w1.corner_radius = 8
 
     exit(app.exec())
