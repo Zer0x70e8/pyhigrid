@@ -4,10 +4,11 @@
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QBitmap, QPainter
 
-from ..widget.album_scroll_widget import AlbumScrollWidget, AssetImageProvider
+from ..widget.virtual_scroll import VirtualScrollWidget
+from ..server.thumbnail.provider import AssetImageProvider
 
 
-class Content(AlbumScrollWidget):
+class Content(VirtualScrollWidget):
     item_double_clicked = Signal(int)
     item_selection_changed = Signal(int, bool)   # index, selected
     def __init__(self, parent=None):
@@ -15,7 +16,7 @@ class Content(AlbumScrollWidget):
 
         self._logger = None
 
-        self._corner_radius = 26
+        self._corner_radius = 24 + 3
 
         self._setup()
 
@@ -28,7 +29,6 @@ class Content(AlbumScrollWidget):
         self._logger = value
 
     def _setup(self):
-        self.set_wheel_inverted(True)
         self.setFocusPolicy(Qt.StrongFocus)   # 确保键盘滚动有效
 
         self.provider = AssetImageProvider(None)

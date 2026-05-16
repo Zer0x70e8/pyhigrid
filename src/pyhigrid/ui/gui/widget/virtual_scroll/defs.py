@@ -1,14 +1,37 @@
 #
-""""""
+"""
+Virtual scrolling widget for displaying a grid of images (or placeholders) asynchronously.
+
+This module provides a `VirtualScrolledWidget` that supports smooth pixel-level scrolling over
+a virtually infinite list of items, rendered in a grid layout. Each item is represented by a `Cell`
+(QLabel) that loads its content asynchronously via a thread pool and a user-provided image provider
+function. The widget reuses `Cell` objects to minimise memory usage and only manages those currently
+visible in the viewport.
+"""
 
 import faulthandler  # , signal
-from typing import Final
+from typing import Final, TYPE_CHECKING
 
 # noinspection PyUnusedImports
 from pyhigrid.schemas.enums import AlbumAssetSortOption, AssetImageType
 
 faulthandler.enable()
 # signal.signal(signal.SIGSEGV, faulthandler.dump_traceback_later)
+
+if TYPE_CHECKING:
+    __doc__ = __doc__
+
+__all__ = [
+    "__doc__",
+    "AlbumAssetSortOption", "AssetImageType",
+    "WHEEL_INVERTED", "ZOOM_WHEEL_INVERTED",
+    "TOTAL_CONTENT_HEIGHT", "CACHE_POOL_MAX_ITEM_NUMBER",
+    "DEFAULT_COLUMN_COUNT", "OVERSCROLL_TOP_MAX", "MAX_ITEM_INDEX",
+    "SCROLL_LINE_FRACTION", "FALLBACK_CELL_SIZE", "WHEEL_DELTA_BASE",
+    # "CORNER_RADIUS",
+    "WHEEL_PIXEL_STEP",
+    # "ENABLE_PERCENTAGE_BASED_CELL_ROW_SCROLLING", "PERCENTAGE_BASED_CELL_ROW_SCROLLING_STEP",
+]
 
 
 WHEEL_INVERTED: Final[bool] = False
