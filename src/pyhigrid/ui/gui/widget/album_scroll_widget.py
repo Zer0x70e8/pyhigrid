@@ -28,11 +28,11 @@ SCROLL_LINE_FRACTION: Final[int] = 10  # 无参数时滚动距离为视口高度
 FALLBACK_CELL_SIZE: Final[int] = 100  # 当控件宽度无效时的单元格大小回退值
 WHEEL_DELTA_BASE: Final[int] = 120  # Qt 鼠标滚轮标准  # 极少需要改
 
-CORNER_RADIUS: Final[int] = 8
+# CORNER_RADIUS: Final[int] = 8
 
 WHEEL_PIXEL_STEP: Final[int] = 30
-ENABLE_PERCENTAGE_BASED_CELL_ROW_SCROLLING: Final[bool] = False
-PERCENTAGE_BASED_CELL_ROW_SCROLLING_STEP: Final[float] = 0.5  # 每次滚动半个单元格高度
+# ENABLE_PERCENTAGE_BASED_CELL_ROW_SCROLLING: Final[bool] = False
+# PERCENTAGE_BASED_CELL_ROW_SCROLLING_STEP: Final[float] = 0.5  # 每次滚动半个单元格高度
 
 
 def image_provider(number, size=256) -> QImage:
@@ -681,10 +681,13 @@ class AlbumScrollWidget(AlbumScrollWidgetBasic):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # 滚轮相关配置（基础类未初始化）
-        self._wheel_inverted = False
-        self._wheel_pixel_step = WHEEL_PIXEL_STEP  # 使用基础类里定义的常量
+
+        # cache
         self._cached_anchor_index: Optional[int] = None
+
+        # Wheel conf
+        self._wheel_inverted = WHEEL_INVERTED
+        self._wheel_pixel_step = WHEEL_PIXEL_STEP
 
     # ==================== 可配置项 ====================
     def set_wheel_inverted(self, inverted: bool):
@@ -823,7 +826,7 @@ class AlbumScrollWidget(AlbumScrollWidgetBasic):
         if event.modifiers() & Qt.ControlModifier:
             delta = event.angleDelta().y()
             # 可根据需要适配反转
-            if self._wheel_inverted:
+            if not self._wheel_inverted:
                 delta = -delta
 
             # 向上滚（放大）→ 减少列数，向下滚（缩小）→ 增加列数
@@ -841,31 +844,31 @@ class AlbumScrollWidget(AlbumScrollWidgetBasic):
 
             event.accept()
             return
-        else:
-            delta = event.angleDelta().y()
-            if self._wheel_inverted:
-                delta = -delta
-            step = self._wheel_pixel_step * (delta / WHEEL_DELTA_BASE)
-            self.scroll_by(step)
-            event.accept()
+
+        delta = event.angleDelta().y()
+        if self._wheel_inverted:
+            delta = -delta
+        step = self._wheel_pixel_step * (delta / WHEEL_DELTA_BASE)
+        self.scroll_by(step)
+        event.accept()
 
     def keyPressEvent(self, event):
-        key = event.key()
         cell_sz = self._get_cell_size()
-        if key == Qt.Key_Up:
-            self.scroll_by(-cell_sz)
-        elif key == Qt.Key_Down:
-            self.scroll_by(cell_sz)
-        elif key == Qt.Key_PageUp:
-            self.scroll_by(-self.contentsRect().height() + cell_sz)
-        elif key == Qt.Key_PageDown:
-            self.scroll_by(self.contentsRect().height() - cell_sz)
-        elif key == Qt.Key_Home:
-            self.scroll_to_top()
-        elif key == Qt.Key_End:
-            self.scroll_to_bottom()
-        else:
-            super().keyPressEvent(event)
+        match event.key():
+            case Qt.Key.Key_Up:
+                self.scroll_by(-cell_sz)
+            case Qt.Key_Down:
+                self.scroll_by(cell_sz)
+            case Qt.Key_PageUp:
+                self.scroll_by(-self.contentsRect().height() + cell_sz)
+            case Qt.Key_PageDown:
+                self.scroll_by(self.contentsRect().height() - cell_sz)
+            case Qt.Key_Home:
+                self.scroll_to_top()
+            case Qt.Key_End:
+                self.scroll_to_bottom()
+            case _:
+                super().keyPressEvent(event)
 
 
 if __name__ == '__main__':

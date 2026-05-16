@@ -15,7 +15,7 @@ class Content(AlbumScrollWidget):
 
         self._logger = None
 
-        self._corner_radius = 25
+        self._corner_radius = 26
 
         self._setup()
 
