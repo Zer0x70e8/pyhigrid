@@ -32,7 +32,8 @@ class Application:
                 missing.append("ui")
             if self.logger is None:
                 missing.append("logger")
-            raise RuntimeError(f"Missing application: {', '.join(missing)}")
+            errmsg = f"Missing application: {', '.join(missing)}"
+            raise RuntimeError(errmsg)
         self.logger.debug("Executing application.")
 
         # self.bg.run()

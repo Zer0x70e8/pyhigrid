@@ -1,4 +1,4 @@
 #
 """"""
 
-from .window import Application
+from .application import Application

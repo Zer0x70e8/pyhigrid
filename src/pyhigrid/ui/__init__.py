@@ -1,17 +1,17 @@
 #
 """"""
 
-from pyhigrid.configue import UI_ENUM
+from .ui_enum import UI
 
-def import_ui(ui: UI_ENUM):
+def import_ui(ui: UI):
     match ui:
-        # case UI_ENUM.CLI:
+        # case UI.CLI:
         #     import .
         #     return None
-        # case UI_ENUM.TUI:
+        # case UI.TUI:
         #     import .
         #     return app
-        case UI_ENUM.GUI:
+        case UI.GUI:
             from .gui import Application as App
             return App
         case _:

@@ -3,74 +3,33 @@
 """"""
 
 import sys
-import logging
-from logging.config import dictConfig
 
-from configue import (Configue,
-                      parse_env_config,
-                      parse_args_to_config,
-                      deep_merge
-                      )
-from core import Application
-
-def build_config() -> dict:
-    config = parse_env_config()  # All default keys are already included
-    cli_overrides = parse_args_to_config()
-    deep_merge(config, cli_overrides)
-
-    return config
-
+from pyhigrid.core.application import Application
+from pyhigrid.core.bootstrapper import Bootstrapper
 
 def main():
-    # conf
-    static_conf_dict = build_config()
-    if __debug__:
-        from pyhigrid.configue import UI_ENUM
-        static_conf_dict["ui"]["ui"] = UI_ENUM.GUI
+    # ==== boot ====
+    boot = Bootstrapper()
 
-    configurator = Configue()
-    configurator.static.load(static_conf_dict)
-    #
-    # print(configurator)
+    # conf
+    boot.setup_configure()
 
     # log
-    log_conf_file_path = (configurator.static.path.confs /
-               configurator.static.log.log_conf_file)
-    if (log_conf_file_path is not None and
-            (log_conf_file_path.is_file() and
-             (log_conf_file_path.suffix == ".ini")
-            )):
-        logging.config.fileConfig(log_conf_file_path)
-    else:
-        # noinspection SpellCheckingInspection
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format="%(asctime)s - %(name)s - "
-                   "%(levelname)s - %(message)s"
-        )
-
-    logger = logging.getLogger(__name__)
-    if configurator.static.debug:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
-
+    boot.setup_logging(logger_name="__main__")
+    logger = boot.logger
     logger.info("Program started.")
 
     # bg
-    bg = 1
+    boot.setup_db()
 
-    # ui
-    from ui import import_ui
-    ui_app = import_ui(configurator.static.ui.ui)(sys.argv)
-    ui_app.setup(configurator, logger, bg)
-    ui_app.show()
+    boot.bg = 1  # test
+    boot.setup_ui(sys.argv)
 
-    # main
-    app = Application(bg, ui_app, logger, configurator)
+    # app
+    app: Application = boot.build_application()
+
+    # exec
     end_code = app.exec()
-
-    # end
     logger.info("Program ended.")
     return end_code
 

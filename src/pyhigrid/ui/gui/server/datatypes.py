@@ -3,13 +3,11 @@
 
 from dataclasses import dataclass
 from typing import Optional
-from enum import Enum
+
+from pyhigrid.schemas.enums import AssetImageType
 
 
-class ThumbSize(Enum):
-    SMALL = "small"
-    MEDIUM = "medium"
-    LARGE = "large"
+__all__ = ["AssetImageType", "AlbumInfo", "AssetThumbData"]
 
 
 @dataclass
@@ -29,3 +27,4 @@ class AssetThumbData:
     thumb_medium: Optional[str]
     thumb_large: Optional[str]
     original_path: Optional[str]  # 原图路径，用以回退生成缩略图（若预生成缺失）
+    # preferred_type: AssetImageType = AssetImageType.THUMB_SMALL

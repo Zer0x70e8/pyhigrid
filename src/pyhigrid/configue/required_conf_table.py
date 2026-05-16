@@ -7,9 +7,18 @@ import tempfile
 from pathlib import Path
 from typing import Sequence, Annotated, Protocol, Tuple
 
-from .ui_enum import UI
 from pyhigrid.__about__ import __author__, __title__, __version__
 from pyhigrid.resources import __file__ as resource_file
+try:
+    from pyhigrid.ui.ui_enum import UI
+except ImportError:
+    from enum import Enum
+
+    class UI(Enum):
+        GUI = "gui"
+        TUI = "tui"
+        CLI = "cli"
+
 
 __all__ = ["UI",
            "get_user_config_dir",

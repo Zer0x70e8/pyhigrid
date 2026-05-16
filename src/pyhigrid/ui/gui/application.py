@@ -4,7 +4,7 @@
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import QApplication
 
-from .window import Window
+from pyhigrid.ui.gui.window.window import Window
 
 from pyhigrid.__about__ import __title__, __author__
 from pyhigrid.configue import UIConfig, Namespace
