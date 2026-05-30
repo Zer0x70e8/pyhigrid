@@ -12,6 +12,7 @@ The name says it: config + argue, and the UE stands for Unified Engine.
 
 # main
 from .configue import Configue
+from .bootstrap import build_configue, register_configue
 from .observable_value import ObservableValue
 from .required_conf_table import (TABLE, TYPE_MAP, UI as UI_ENUM,
                                   UIConfig,
@@ -24,7 +25,8 @@ from .utils import (create_parser, parse_args_to_config,
                     Namespace, FrozenNamespace,
                     )
 
-__all__ = ["Configue",
+__all__ = ["Configue", "config",
+           "build_configue", "register_configue",
            "ObservableValue",
            "TABLE", "TYPE_MAP", "UI_ENUM",
            "UIConfig",
@@ -34,3 +36,5 @@ __all__ = ["Configue",
            "deep_merge",
            "Namespace", "FrozenNamespace",
            ]
+
+config = Configue()

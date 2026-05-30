@@ -95,3 +95,6 @@ class Window(QWidget):
         self.content.setGeometry(0, 0, self.width(), self.height())
         self.frame.setGeometry(0, 0, self.width(), self.height())
         self.titlebar.setGeometry(0, 3, self.width(), self.titlebar.height())
+
+    def closeEvent(self, event):
+        self.hide()

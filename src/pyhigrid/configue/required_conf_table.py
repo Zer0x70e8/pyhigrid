@@ -5,7 +5,8 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from typing import Sequence, Annotated, Protocol, Tuple
+from typing import Sequence, Annotated, Protocol, Tuple, Optional, TypedDict
+from uuid import UUID
 
 from pyhigrid.__about__ import __author__, __title__, __version__
 from pyhigrid.resources import __file__ as resource_file
@@ -119,6 +120,10 @@ def _fallback_cache_dir(app_name: str, app_author: str = None) -> Path:
 
 
 # =========
+class BuiltinAlbumDef(TypedDict, total=False):
+    name: str
+    uuid: Optional[UUID]
+
 TWO_NUM_TYPE = Annotated[Sequence[int], "length=2"]
 
 TABLE = {
@@ -156,6 +161,13 @@ TABLE = {
         "quiet": False,  # Diable INFO log level output.
     },
 
+    # "albums": {
+    #     "builtin": [
+    #         {"name": "all_photos", "uuid": None},  # None 表示用算法生成
+    #         {"name": "unorganized", "uuid": None},
+    #     ],
+    # },
+
     "ui": {
         "ui": UI.CLI,
         "default_theme": "default",
@@ -169,8 +181,8 @@ TABLE = {
 TYPE_MAP = {
     "debug": bool,
 
-    "m": str,
-    "O": int,
+    "m": Optional[str],
+    "O": Optional[int],
 
     "log": {
         "verbose": bool,
@@ -189,6 +201,10 @@ TYPE_MAP = {
     "file": {
         "log_conf_file": Path,
     },
+
+    # "albums": {
+    #     "builtin": [BuiltinAlbumDef],
+    # },
 
     "ui": {
         "ui": UI,

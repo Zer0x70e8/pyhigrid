@@ -41,7 +41,9 @@ pip install Pillow PySide6   # or PyQt6
 Then launch the UI:
 
 ```bash
-python -m pyhigrid
+pwd  #  example\pyhigrid\src\pyhigrid
+cd .\src
+python -m pyhigrid  # Default to opening the GUI.
 ```
 
 A proper pip install procedure will be added once the core functionality stabilises.

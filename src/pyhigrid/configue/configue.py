@@ -1,31 +1,25 @@
 #
 """Configuration Unified Engine"""
 
+import logging
+import weakref
 from itertools import chain
 
 from .utils.namespace import Namespace, FrozenNamespace
+from .utils.logger_descriptor import LoggerDescriptor
 
 
-class Configue:
+class _Configue:
     __slots__ = ("static", "dynamic", "_logger")
+
+    logger = LoggerDescriptor(
+        default_factory=lambda: logging.getLogger("__main__.configue")
+    )
 
     def __init__(self):
         self.static = StaticConfig()
         self.dynamic = DynamicConfig()
-        self._logger = None
-
-    @property
-    def logger(self):
-        return self._logger
-
-    @logger.setter
-    def logger(self, logger):
-        self._logger = logger
-        self.dynamic.logger = logger
-
-    def check(self):
-        if self._logger is None:
-            raise RuntimeError("Configurator missing logging function.")
+        # self._logger = None
 
     def __str__(self):
         return "\n".join((
@@ -45,6 +39,23 @@ class Configue:
             ),
             "\t\t)",
         ))
+
+
+class Configue(_Configue):
+    _instance = None
+    _is_initialized = False
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self):
+        if Configue._is_initialized:
+            return
+        Configue._is_initialized = True
+        super().__init__()
+        self.dynamic._configue_ref = weakref.ref(self)
 
 
 class StaticConfig(FrozenNamespace):
@@ -85,12 +96,27 @@ class DynamicConfig(Namespace):
 
     def __init__(self, **entries):
         super().__init__(**entries)
+        self._configue_ref = None   # 由外部注入
         self._logger = None
 
     def __str__(self):
         return f"{type(self).__name__}\n" + ("\t\n".join(
             f"{k}: {v}" for k, v in self.items()
         ))
+
+    @property
+    def logger(self):
+        if self._logger is not None:
+            return self._logger
+        # 回退到 Configue
+        parent = self._configue_ref and self._configue_ref()
+        if parent is not None:
+            return parent.logger.getChild("dynamic")
+        raise RuntimeError("DynamicConfig 未绑定 Configue")
+
+    @logger.setter
+    def logger(self, value):
+        self._logger = value
 
     def items(self):
         results = {}

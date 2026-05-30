@@ -4,6 +4,8 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from .enums import AlbumType
+
 
 @dataclass
 class Asset:
@@ -36,7 +38,7 @@ class Album:
     id: int
     uuid: str
     title: str
-    album_type: int  # 0:手动 1:智能 3:收藏 4:最近删除 5:所有照片 6:视频 7:未整理
+    album_type: AlbumType  # 0:手动 1:智能 3:收藏 4:最近删除 5:所有照片 6:视频 7:未整理
     cover_asset_id: Optional[int] = None
     sort_order: int = 0
     is_deleted: bool = False

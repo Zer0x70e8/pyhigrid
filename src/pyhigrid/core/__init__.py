@@ -2,5 +2,4 @@
 """"""
 
 from .application import Application
-
-__all__ = ["Application"]
+from .bootstrapper import Container

@@ -16,6 +16,8 @@ class Application(QApplication):
     def __init__(self, argv):
         super().__init__(argv)
 
+        self.setQuitOnLastWindowClosed(False)
+
         self.main_window = None
 
         self.conf = None
@@ -54,5 +56,3 @@ class Application(QApplication):
 
     def show(self):
         self.main_window.show()
-
-

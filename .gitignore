@@ -18,5 +18,6 @@ eggs/
 #my tool
 tree.py
 
-# Test folder
-test/
+# archive
+assets/
+src/pyhigrid - copy

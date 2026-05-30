@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "A HIG-like image grid tool to showcase your Hyprland ricing setups."
 readme = "README.md"
 authors = [
-    {name = "Zer0x70e8", email = "  @qq.com"}
+    {name = "Zer0x70e8", email = "3791929822@qq.com"}
 ]
 
 license = {text = "MIT"}
@@ -28,8 +28,8 @@ keywords = [
 ]
 
 [project.scripts]
-#pyhigrid = "photoapp.launch:main"
-#pyhigrid-cli = "photoapp.cli.main:cli"   # 可选组
+#pyhigrid = "pyhigrid.launch:main"
+pyhigrid = "pyhigrid_cli.main:cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]
