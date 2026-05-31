@@ -14,6 +14,10 @@ class _Application:
     def __init__(self):
         self.container: Optional[Container] = None
 
+    def exec(self):
+        self.container.exec()
+        return self.container.get("ui_end_code")
+
 
 class Application(_Application):
     _instance = None
@@ -40,5 +44,5 @@ class Application(_Application):
         Application._initialized = True
 
     @classmethod
-    def instance(cls):
+    def instance(cls) -> "Application":
         return cls._instance

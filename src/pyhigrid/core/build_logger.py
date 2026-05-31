@@ -48,7 +48,7 @@ def setup_logging(
 
 def register_logger(container: Container):
     container.register(
-        "logging",
+        "logger",
         lambda: setup_logging(
             configurator=container.get("configue")
         )

@@ -4,7 +4,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from pyhigrid.schemas.enums import AssetImageType
+from pyhigrid.domain.enums import AssetImageType
 
 
 __all__ = ["AssetImageType", "AlbumInfo", "AssetThumbData"]

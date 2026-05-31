@@ -7,7 +7,7 @@ from typing import List, OrderedDict, Optional
 from PySide6.QtCore import QObject, QMutex, QMutexLocker, Qt
 from PySide6.QtGui import QImage, QImageReader
 
-from pyhigrid.schemas.enums import AssetImageType, AlbumAssetSortOption
+from pyhigrid.domain.enums import AssetImageType, AlbumAssetSortOption
 from ...widget.virtual_scroll.utils import image_provider
 from ..datatypes import AssetThumbData, AlbumInfo
 

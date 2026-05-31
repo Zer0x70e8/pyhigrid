@@ -7,38 +7,39 @@ from PySide6.QtWidgets import QApplication
 from pyhigrid.ui.gui.window.window import Window
 
 from pyhigrid.__about__ import __title__, __author__
+# from pyhigrid.core import Application as mainApplication
 from pyhigrid.configue import UIConfig, Namespace
+from pyhigrid.configue.utils.logger_descriptor import LazyLogger
 
 __all__ = ["Application"]
 
 
 class Application(QApplication):
+    logger = LazyLogger("__main__.__ui__")
+
     def __init__(self, argv):
         super().__init__(argv)
 
-        self.setQuitOnLastWindowClosed(False)
+        # self.setQuitOnLastWindowClosed(False)
 
         self.main_window = None
 
         self.conf = None
         self.confs = None
-        self.logger = None
         self.bg = None
 
 
-    def setup(self, configurator, logger, bg):
+    def setup(self, configurator):
         QCoreApplication.setOrganizationName(__author__)
         QCoreApplication.setApplicationName(__title__)
 
         self.conf = configurator
         self.confs: UIConfig = self.conf.static.ui
-        self.logger = logger
-        self.bg = bg
 
         self.setup_confs()
 
         self.main_window = Window()
-        self.main_window.setup(self.logger.getChild("__ui__"),
+        self.main_window.setup(self.logger,
                                self.conf,
                                self.confs,
                                self.bg
@@ -56,3 +57,8 @@ class Application(QApplication):
 
     def show(self):
         self.main_window.show()
+
+    def exec(self):
+        end_code = super().exec()
+        # mainApplication.instance().container.reg("ui_end_code", lambda: end_code)
+        return end_code

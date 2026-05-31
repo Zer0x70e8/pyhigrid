@@ -13,7 +13,7 @@ import faulthandler  # , signal
 from typing import Final, TYPE_CHECKING
 
 # noinspection PyUnusedImports
-from pyhigrid.schemas.enums import AlbumAssetSortOption, AssetImageType
+from pyhigrid.domain.enums import AlbumAssetSortOption, AssetImageType
 
 faulthandler.enable()
 # signal.signal(signal.SIGSEGV, faulthandler.dump_traceback_later)

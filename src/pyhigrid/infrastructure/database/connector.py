@@ -3,6 +3,7 @@
 线程安全的 SQLite 数据库连接器，每个线程维护自己的连接。
 """
 
+import os
 import sqlite3
 import threading
 from pathlib import Path
@@ -44,6 +45,7 @@ ASSETS_TABLE = "assets"
 ALBUMS_TABLE = "albums"
 ALBUM_ASSETS_TABLE = "album_assets"
 
+_package_name = os.path.basename(os.path.dirname(__file__))
 
 class Connector:
     """
@@ -53,7 +55,7 @@ class Connector:
         with db as conn:
             conn.execute("...")
     """
-    logger = LazyLogger("__main__.database")
+    logger = LazyLogger(f"__main__.{_package_name}")
 
     def __init__(self, db_path=None, schema_file=None):
         self.db_path: Path = db_path
@@ -66,7 +68,7 @@ class Connector:
         self._connections_lock = threading.Lock()
         self._connections: list[sqlite3.Connection] = []
 
-        self.logger.info("数据库连接器初始化完成，DB 路径: %s", self.db_path)
+        self.logger.info("DB Connector init completed，DB path: %s", self.db_path)
 
     # ------------------------------------------------------------------
     # Schema 管理

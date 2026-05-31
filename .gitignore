@@ -21,3 +21,6 @@ tree.py
 # archive
 assets/
 src/pyhigrid - copy
+
+# assets
+*.db

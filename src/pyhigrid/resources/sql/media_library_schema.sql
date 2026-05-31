@@ -10,7 +10,7 @@
 -- 1. 资产主表
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS assets (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,      -- 媒体UUID
     uuid             TEXT    NOT NULL UNIQUE,                -- 全局唯一标识
     file_path        TEXT    NOT NULL,                       -- 文件系统路径
     thumb_path       TEXT,                                   -- 大缩略图路径
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS albums (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     uuid           TEXT    NOT NULL UNIQUE,                  -- 相簿唯一标识
     title          TEXT    NOT NULL,                         -- 相簿标题
-    album_type     INTEGER NOT NULL DEFAULT 0,               -- 0:手动 1:智能 3:收藏 4:最近删除 5:所有照片 6:视频 7:未整理
+    album_type     INTEGER NOT NULL DEFAULT 0,               -- 相薄UUID
     cover_asset_id INTEGER,                                  -- 封面资产 ID
     sort_order     INTEGER NOT NULL DEFAULT 0,               -- 排序权重
     is_deleted     INTEGER NOT NULL DEFAULT 0,               -- 软删除
