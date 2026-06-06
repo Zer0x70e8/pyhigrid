@@ -1,39 +1,36 @@
 #
-""""""
+"""基础仓库类，提供通用数据库访问能力及事务上下文。"""
 
-import os
-from sqlite3 import Cursor, Row
-from typing import Optional, List
+from contextlib import contextmanager
+from sqlite3 import Cursor, Row, Connection
+from typing import Optional, List, Generator
 
-from pyhigrid.configue.utils.logger_descriptor import LazyLogger
 from pyhigrid.infrastructure.database import Connector
+from pyhigrid.configue.utils.logger_descriptor import LazyLogger
 
-_package_name = os.path.basename(os.path.dirname(__file__))
 
 class BaseRepository:
-    logger = LazyLogger(f"__main__.{_package_name}")
+    """仓库基类，封装线程安全的读写与事务。"""
+
+    logger = LazyLogger("__main__.database")
 
     def __init__(self, db: Connector):
-        self._db = db
-        self.logger.info(f"Initializing repository: {type(self).__name__}")
+        self._db: Connector = db
 
-    # write
+    # ---------- 原有便捷方法 ----------
     def _execute(self,
                  query: str,
                  params=None
                  ) -> Cursor:
-        """执行 INSERT/UPDATE/DELETE, auto commit."""
         with self._db.connect() as conn:
             cursor = conn.execute(query, params or ())
             conn.commit()
             return cursor
 
-    # read
     def _fetchone(self,
                   query: str,
                   params=None
                   ) -> Optional[Row]:
-        """查询单行，:return: sqlite3.Row or None."""
         with self._db.connect() as conn:
             cursor = conn.execute(query, params or ())
             return cursor.fetchone()
@@ -42,7 +39,20 @@ class BaseRepository:
                   query: str,
                   params=None
                   ) -> Optional[List[Row]]:
-        """查询多行，:return: list of sqlite3.Row."""
         with self._db.connect() as conn:
             cursor = conn.execute(query, params or ())
             return cursor.fetchall()
+
+    # ---------- 新增事务支持 ----------
+    @contextmanager
+    def _transaction(self) -> Generator[Connection, None, None]:
+        conn: Connection = self._db.connect()
+        if conn is None:
+            raise RuntimeError("数据库连接获取失败")
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            self.logger.exception("事务回滚，已发生异常")
+            raise
