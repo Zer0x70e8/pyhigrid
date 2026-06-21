@@ -1,21 +1,23 @@
 #
 """"""
+from logging import getLogger
 
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import QApplication
 
 from pyhigrid.ui.gui.window.window import Window
 
+from pyhigrid import __name__ as __main_package_name__
 from pyhigrid.__about__ import __title__, __author__
 # from pyhigrid.core import Application as mainApplication
 from pyhigrid.configue import UIConfig, Namespace
-from pyhigrid.configue.utils.logger_descriptor import LazyLogger
+
 
 __all__ = ["Application"]
 
 
 class Application(QApplication):
-    logger = LazyLogger("__main__.__ui__")
+    logger = getLogger(f"{__main_package_name__}.__ui__")
 
     def __init__(self, argv):
         super().__init__(argv)
@@ -24,26 +26,23 @@ class Application(QApplication):
 
         self.main_window = None
 
+        self.container = None
         self.conf = None
         self.confs = None
-        self.bg = None
 
 
-    def setup(self, configurator):
+    def setup(self, container):
         QCoreApplication.setOrganizationName(__author__)
         QCoreApplication.setApplicationName(__title__)
 
-        self.conf = configurator
+        self.container = container
+        self.conf = container.get("configue")
         self.confs: UIConfig = self.conf.static.ui
 
         self.setup_confs()
 
         self.main_window = Window()
-        self.main_window.setup(self.logger,
-                               self.conf,
-                               self.confs,
-                               self.bg
-                               )
+        self.main_window.setup(self.container)
 
     def setup_confs(self):
         dynamic_conf = Namespace()

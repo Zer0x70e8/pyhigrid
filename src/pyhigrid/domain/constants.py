@@ -4,9 +4,9 @@
 import uuid
 
 # size
-THUMB_SIZE_SMALL = 256
-THUMB_SIZE_MEDIUM = 800
-THUMB_SIZE_LARGE = 1600
+THUMB_SIZE_SMALL = 128
+THUMB_SIZE_MEDIUM = 256
+THUMB_SIZE_LARGE = 512
 
 # 支持的文件扩展名
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp', '.tiff', '.tif'}

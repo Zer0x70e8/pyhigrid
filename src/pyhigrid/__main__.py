@@ -7,10 +7,12 @@ import gc
 import logging
 import traceback
 
+from pyhigrid import __name__ as __main_package_name__
 from pyhigrid.core import Application, Container
 from pyhigrid.core.build_logger import register_logger
 from pyhigrid.configue import register_configue
 from pyhigrid.infrastructure.database import register_database
+from pyhigrid.repository import register_repository
 from pyhigrid.ui.bootstrap import register_ui
 
 def main_():
@@ -30,11 +32,14 @@ def main_():
     #
     container.reg("ui_end_code", lambda: end_code)
     container.get("logger")  # Load immediately.
-    root_logger: logging.Logger = logging.getLogger("__main__")
+    root_logger: logging.Logger = logging.getLogger(__main_package_name__)
     root_logger.info("Program starting.")
 
     # db
     register_database(container)
+
+    # repo
+    register_repository(container)
 
     # gc freeze
     gc.collect()

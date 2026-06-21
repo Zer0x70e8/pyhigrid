@@ -188,4 +188,4 @@ def run(args):
     if args.json_output:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
-        print(f"Import complete: Success {result['inserted']}, Skipped {result['skipped']}")
+        print(f"Import complete: Success {result.inserted}, Skipped {result.skipped}")

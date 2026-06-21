@@ -131,6 +131,11 @@ def get_linux_corner_radius() -> Optional[float]:
         # 默认 Breeze 主题的圆角半径约为 3px
         return 3.0
 
+    # ---------- hyprland ----------
+    if "hyprland" in desktop or "plasma" in session:
+        # 给用户自己解决
+        return 0.0
+
     # ---------- 其他桌面环境 ----------
     # 可以继续针对 Xfce, Cinnamon 等添加类似启发式逻辑，此处省略
     return None
@@ -141,15 +146,14 @@ def get_system_window_corner_radius() -> Optional[float]:
     对外统一接口，返回当前操作系统默认窗口圆角半径（像素）。
     若无法判断，返回 None。
     """
-    system = platform.system()
-    if system == "Windows":
-        return get_windows_corner_radius()
-    elif system == "Darwin":
-        return get_macos_corner_radius()
-    elif system == "Linux":
-        return get_linux_corner_radius()
-    else:
-        return None
+    match platform.system():
+        case "Windows":
+            return get_windows_corner_radius()
+        case "Darwin":
+            return get_macos_corner_radius()
+        case "Linux":
+            return get_linux_corner_radius()
+    return None
 
 
 def main():

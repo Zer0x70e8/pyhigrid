@@ -42,7 +42,7 @@ class ViewAssetRepository(BaseRepository):
         query = f"""
             SELECT
                 uuid,
-                COALESCE(thumb_medium_path, thumb_path, thumb_small_path) AS thumb_path,
+                file_path,
                 taken_at,
                 mime_type,
                 is_favorite
@@ -78,7 +78,7 @@ class ViewAssetRepository(BaseRepository):
         query = f"""
             SELECT
                 a.uuid,
-                COALESCE(a.thumb_medium_path, a.thumb_path, a.thumb_small_path) AS thumb_path,
+                a.file_path,
                 a.taken_at,
                 a.mime_type,
                 a.is_favorite
@@ -124,16 +124,15 @@ class ViewAssetRepository(BaseRepository):
 
     @staticmethod
     def _row_to_asset_item(row) -> AssetItem:
-        """将sqlite3.Row转换为AssetItem"""
         mime = row['mime_type'] or ""
         media_type = 'video' if mime.startswith('video/') else 'image'
         return AssetItem(
             uuid=row['uuid'],
-            thumb_path=row['thumb_path'] or "",
+            file_path=row['file_path'],  # 映射新字段
             taken_at=row['taken_at'],
             media_type=media_type,
-            duration=None,      # 暂不存储视频时长
             is_favorite=bool(row['is_favorite']),
+            duration=None  # 暂不存储视频时长
         )
 
     # ---------- 资产详情 ----------

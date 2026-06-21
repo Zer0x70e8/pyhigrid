@@ -1,17 +1,26 @@
 #
 """"""
 
+import sys
+import logging
 import ctypes
 from ctypes import wintypes
+
+import pyhigrid
 
 # noinspection SpellCheckingInspection
 DWMWA_WINDOW_CORNER_PREFERENCE = 33
 # noinspection SpellCheckingInspection
 DWMWCP_DONOTROUND = 1
 
-def disable_round_corners(hwnd: int) -> bool:
+logger = logging.getLogger(
+    f"{pyhigrid.__name__}.__ui__.utils.disable_win11_round_corners"
+)
+
+def disable_round_corners(hwnd: int, auto_platform: bool=True) -> bool:
     """尝试禁用 Windows 11 的窗口圆角，返回是否成功"""
-    # noinspection PyBroadException
+    if auto_platform and sys.platform != 'win32':
+        return False
     try:
         # noinspection SpellCheckingInspection
         dwmapi = ctypes.cdll.LoadLibrary("dwmapi.dll")
@@ -26,5 +35,5 @@ def disable_round_corners(hwnd: int) -> bool:
         )
         return True
     except Exception as e:
-        print(e)
+        logger.error(e)
         return False

@@ -5,7 +5,11 @@ import logging
 from logging.config import fileConfig as logging_fileConfig
 from pathlib import Path
 
+from pyhigrid import __name__ as __main_package_name__
 from pyhigrid.core import Container
+
+
+LoggerName = __main_package_name__
 
 
 def setup_logging(
@@ -27,7 +31,7 @@ def setup_logging(
         else:
             log_conf_path = (
                 configurator.static.path.confs
-                / configurator.static.log.log_conf_file
+                / configurator.static.file.log_conf_file
             )
 
     if log_conf_path.is_file() and log_conf_path.suffix == ".ini":
@@ -50,6 +54,7 @@ def register_logger(container: Container):
     container.register(
         "logger",
         lambda: setup_logging(
-            configurator=container.get("configue")
+            configurator=container.get("configue"),
+            logger_name=LoggerName
         )
     )

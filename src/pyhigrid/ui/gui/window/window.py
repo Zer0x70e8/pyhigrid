@@ -1,6 +1,8 @@
 #
 """"""
 
+from logging import getLogger
+
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt
 
@@ -11,6 +13,8 @@ from .frame import Frame
 from ..utils.window_resizer import WindowResizer
 from ..utils.disable_win11_round_corners import disable_round_corners
 
+from pyhigrid import __name__ as __main_package_name__
+from pyhigrid.resources import __file__ as __resources_file__
 from pyhigrid.configue import UIConfig
 
 __all__ = ['Window']
@@ -20,10 +24,13 @@ class Window(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.logger = None
+        self._logger = getLogger(
+            f"{__main_package_name__}.__ui__."
+            f"{type(self).__name__}"
+        )
+        self.container = None
         self.confs = None
         self.conf = None
-        self.bg = None
 
         self._first_refresh = False
 
@@ -35,11 +42,10 @@ class Window(QWidget):
 
         self.setup_ui()
 
-    def setup(self, logger, conf, confs, bg):
-        self.logger = logger
-        self.confs: UIConfig = confs
-        self.conf = conf
-        self.bg = bg
+    def setup(self, container):
+        self.container = container
+        self.conf = container.get("configue")
+        self.confs: UIConfig = self.conf.static.ui
 
         #
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -55,10 +61,11 @@ class Window(QWidget):
         self.window_resizer = WindowResizer(
             self, self, False)
 
-        self.content.logger = logger
+        #
+        self.content.setup(container)
 
         #
-        self.logger.debug("The UI setup completed.")
+        self._logger.debug("The UI setup completed.")
 
     def setup_ui(self):
 
@@ -72,7 +79,7 @@ class Window(QWidget):
         if __debug__:
             # noinspection SpellCheckingInspection
             with open(
-                    r".\resources\default_theme_qss\main_window.qss",
+                    f"{__resources_file__[0:-12]}/default_theme_qss/main_window.qss",
                     "r", encoding="utf-8",
 
                     ) as qss:

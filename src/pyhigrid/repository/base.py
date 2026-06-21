@@ -43,7 +43,6 @@ class BaseRepository:
             cursor = conn.execute(query, params or ())
             return cursor.fetchall()
 
-    # ---------- 新增事务支持 ----------
     @contextmanager
     def _transaction(self) -> Generator[Connection, None, None]:
         conn: Connection = self._db.connect()

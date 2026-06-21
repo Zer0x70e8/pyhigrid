@@ -90,7 +90,7 @@ class ViewItem:
 class AssetItem:
     """资产网格/瀑布流展示实体"""
     uuid: str
-    thumb_path: str
+    file_path: str
     taken_at: Optional[str]    # ISO 格式日期
     media_type: str            # 'image' 或 'video'
     duration: Optional[float]  # 视频时长

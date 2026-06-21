@@ -86,7 +86,7 @@ class TitleBar(QWidget):
 
     def setup_(self):
         self.setFixedHeight(112)
-        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -141,7 +141,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
 
     window = QWidget()
-    window.setAttribute(Qt.WA_StyledBackground, True)
+    window.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
     layout_ = QVBoxLayout()
     t = TitleBar(window)
     layout_.addWidget(t)

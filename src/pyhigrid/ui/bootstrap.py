@@ -18,7 +18,7 @@ def register_ui(
 ):
     container.register(
         "ui",
-        lambda : setup_ui(container.get("configue"))
+        lambda : setup_ui(container)
     )
     container.on(
         lambda: (
@@ -40,12 +40,13 @@ def register_ui(
     # container.on(boot_ui)
 
 def setup_ui(
-        configue  # type: Configue
+        container  # type: container
 ):
+    configue = container.get("configue")  # type: Configue
     global ui_app
     from pyhigrid.ui import import_ui
     ui_cls = import_ui(configue.static.ui.ui)
     ui_app = ui_cls(sys.argv)
-    ui_app.setup(configue)
+    ui_app.setup(container)
     ui_app.show()
     return ui_app

@@ -145,10 +145,12 @@ TABLE = {
         "data": get_user_data_dir(__title__, __author__),
         "resources": Path(resource_file),
         "temp": get_temp_dir(__title__ + "_tmp"),
+        "thumbnails": get_cache_dir(__title__, __author__) / "thumbnails"
     },
 
     "file": {  # It's just the name, not the full path.
         "log_conf_file": Path("logging.conf"),
+        "album_db_file": Path("album.db"),
     },
 
     "env_override": {
@@ -156,7 +158,7 @@ TABLE = {
     },
 
     "log": {
-        "log_conf_file": Path("logging.conf"),
+        # "log_conf_file": Path("logging.conf"),
         "verbose": False,  # More log output.
         "quiet": False,  # Diable INFO log level output.
     },
@@ -187,7 +189,7 @@ TYPE_MAP = {
     "log": {
         "verbose": bool,
         "quiet": bool,
-        "log_conf_file": Path,
+        # "log_conf_file": Path,
     },
 
     "path": {
@@ -200,6 +202,7 @@ TYPE_MAP = {
 
     "file": {
         "log_conf_file": Path,
+        "album_db_file": Path,
     },
 
     # "albums": {

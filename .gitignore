@@ -19,7 +19,8 @@ eggs/
 tree.py
 
 # archive
-assets/
+test/archive/
 
 # assets
+assets/
 *.db
