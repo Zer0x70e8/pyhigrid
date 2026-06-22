@@ -4,33 +4,30 @@
 import logging
 import weakref
 from itertools import chain
+from typing import Optional, cast
 
 from .utils.namespace import Namespace, FrozenNamespace
-from .utils.logger_descriptor import LoggerDescriptor
 
 
 class _Configue:
-    __slots__ = ("static", "dynamic", "_logger")
+    __slots__ = ("static", "dynamic")
 
-    logger = LoggerDescriptor(
-        default_factory=lambda: logging.getLogger("__main__.configue")
-    )
+    logger = logging.getLogger("pyhigrid.configue")
 
     def __init__(self):
         self.static = StaticConfig()
         self.dynamic = DynamicConfig()
-        # self._logger = None
 
     def __str__(self):
         return "\n".join((
-            f"{type(self).__name__}",
+            f"{type(self).__name__}(",
             f"\t{type(self.static).__name__}: (",
             *chain.from_iterable(
                 [f"\t\t{k}: {v}"] if not isinstance(v, Namespace)
                 else [f"\t\t{k}:"] + [f"\t\t\t{k_}: {v_}" for k_, v_ in v.items()]
                 for k, v in self.static.items()
             ),
-            "\t\t)",
+            "\t\t),",
             f"\t{type(self.dynamic).__name__}: (",
             *chain.from_iterable(
                 [f"\t\t{k}: {v}"] if not isinstance(v, Namespace)
@@ -38,17 +35,18 @@ class _Configue:
                 for k, v in self.dynamic.items()
             ),
             "\t\t)",
+            ")"
         ))
 
 
 class Configue(_Configue):
-    _instance = None
+    _instance: Optional[_Configue] = None
     _is_initialized = False
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+            cls._instance = super().__new__(cls)  # type: ignore[arg-type]
+        return cast(Configue, cls._instance)
 
     def __init__(self):
         if Configue._is_initialized:
@@ -96,7 +94,8 @@ class DynamicConfig(Namespace):
 
     def __init__(self, **entries):
         super().__init__(**entries)
-        self._configue_ref = None   # 由外部注入
+        self._configue_ref: Optional[weakref.ReferenceType[_Configue]] \
+            = None  # 由外部注入
         self._logger = None
 
     def __str__(self):
@@ -109,10 +108,12 @@ class DynamicConfig(Namespace):
         if self._logger is not None:
             return self._logger
         # 回退到 Configue
-        parent = self._configue_ref and self._configue_ref()
-        if parent is not None:
-            return parent.logger.getChild("dynamic")
-        raise RuntimeError("DynamicConfig 未绑定 Configue")
+        # 显式解包弱引用
+        if self._configue_ref is not None:
+            parent = self._configue_ref()
+            if parent is not None:
+                    return parent.logger.getChild("dynamic")
+        raise RuntimeError("DynamicConfig not bound Configue.")
 
     @logger.setter
     def logger(self, value):

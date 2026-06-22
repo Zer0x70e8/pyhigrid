@@ -1,18 +1,18 @@
 #
 """基础仓库类，提供通用数据库访问能力及事务上下文。"""
 
+import logging
 from contextlib import contextmanager
 from sqlite3 import Cursor, Row, Connection
 from typing import Optional, List, Generator
 
 from pyhigrid.infrastructure.database import Connector
-from pyhigrid.configue.utils.logger_descriptor import LazyLogger
 
 
 class BaseRepository:
     """仓库基类，封装线程安全的读写与事务。"""
 
-    logger = LazyLogger("__main__.database")
+    logger = logging.getLogger("pyhigrid.database")
 
     def __init__(self, db: Connector):
         self._db: Connector = db

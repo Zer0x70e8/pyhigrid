@@ -3,11 +3,10 @@
 """"""
 
 import sys
-import gc
 import logging
 import traceback
 
-from pyhigrid import __name__ as __main_package_name__
+import pyhigrid
 from pyhigrid.core import Application, Container
 from pyhigrid.core.build_logger import register_logger
 from pyhigrid.configue import register_configue
@@ -16,6 +15,8 @@ from pyhigrid.repository import register_repository
 from pyhigrid.ui.bootstrap import register_ui
 
 def main_():
+    end_code = -1
+
     # container
     container = Container()
 
@@ -32,7 +33,9 @@ def main_():
     #
     container.reg("ui_end_code", lambda: end_code)
     container.get("logger")  # Load immediately.
-    root_logger: logging.Logger = logging.getLogger(__main_package_name__)
+    root_logger: logging.Logger = (
+        logging.getLogger(pyhigrid.__name__)
+    )
     root_logger.info("Program starting.")
 
     # db
@@ -40,10 +43,6 @@ def main_():
 
     # repo
     register_repository(container)
-
-    # gc freeze
-    gc.collect()
-    gc.freeze()
 
     # # bg
     #
@@ -54,22 +53,20 @@ def main_():
     # exec
     end_code = app.exec()
     root_logger.info("Program ended.")
-    gc.unfreeze()
 
     return end_code
 
 def main():
-    end_code = -1
+    # end_code = -1
     # noinspection PyBroadException
     try:
         end_code = main_()
     except KeyboardInterrupt:
-        end_code = -1
+        end_code = 0
     except Exception:
         traceback.print_exc()
         end_code = -1
-    finally:
-        return end_code
+    return end_code
 
 if __name__ == '__main__':
     sys.exit(main())

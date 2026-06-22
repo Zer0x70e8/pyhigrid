@@ -2,13 +2,12 @@
 """"""
 
 import traceback
+import logging
 from typing import Any, Callable, Dict, Tuple, List
-
-from pyhigrid.configue.utils.logger_descriptor import LazyLogger
 
 
 class Container:
-    logger = LazyLogger("__main__.container")
+    logger = logging.getLogger("pyhigrid.container")
 
     def __init__(self):
         self._factories: Dict[str, Tuple[Callable[[], Any], bool]] = {}

@@ -3,9 +3,9 @@
 
 from logging import Logger
 from traceback import format_exc
-from typing_extensions import Callable
+from typing import Callable, Optional
 
-from PySide6.QtCore import Qt, Signal, QRect, QPropertyAnimation  # , QPoint
+from PySide6.QtCore import Qt, Signal, QRect, QPropertyAnimation
 from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import (QWidget, QHBoxLayout, QLineEdit,
                                QPushButton, QFrame, QComboBox
@@ -20,10 +20,10 @@ class SearchBarLayoutPlaceholder(QWidget):
         super().__init__(parent)
         self.setObjectName("SearchPlaceholder")
 
-        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
     def mousePressEvent(self, event: QMouseEvent):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit()
         super().mousePressEvent(event)
 
@@ -32,7 +32,10 @@ class SearchBar(QFrame):
     closed = Signal()
     search = Signal(dict)
 
-    def __init__(self, parent=None, placeholder: SearchBarLayoutPlaceholder = None):
+    def __init__(self,
+                 parent=None,
+                 placeholder: Optional[SearchBarLayoutPlaceholder] = None
+                 ):
         super().__init__(parent)
         self.placeholder = placeholder
         self.setObjectName("SearchBar")

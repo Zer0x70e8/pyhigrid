@@ -15,14 +15,16 @@ from .configue import Configue
 from .bootstrap import build_configue, register_configue
 from .observable_value import ObservableValue
 from .required_conf_table import (TABLE, TYPE_MAP, UI as UI_ENUM,
-                                  UIConfig,
-                                  get_user_config_dir)
+                                  UIConfig
+                                  )
 
 # helpful
 from .utils import (create_parser, parse_args_to_config,
                     parse_env_config, update_config_from_env,
                     deep_merge,
                     Namespace, FrozenNamespace,
+                    get_temp_dir, get_cache_dir,
+                    get_user_data_dir, get_user_config_dir,
                     )
 
 __all__ = ["Configue", "config",
@@ -30,11 +32,11 @@ __all__ = ["Configue", "config",
            "ObservableValue",
            "TABLE", "TYPE_MAP", "UI_ENUM",
            "UIConfig",
-           "get_user_config_dir",
            "create_parser", "parse_args_to_config",
            "parse_env_config", "update_config_from_env",
            "deep_merge",
            "Namespace", "FrozenNamespace",
+           "get_temp_dir", "get_cache_dir", "get_user_data_dir", "get_user_config_dir"
            ]
 
 config = Configue()

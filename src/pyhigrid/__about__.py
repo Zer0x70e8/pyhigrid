@@ -9,5 +9,5 @@ Additional subtitles:
 """
 
 __title__ = "pyhigrid"
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __author__ = "Zer0x70e8"

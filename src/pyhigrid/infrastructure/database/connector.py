@@ -4,12 +4,12 @@
 """
 
 import sqlite3
+import logging
 import threading
 from pathlib import Path
 from importlib import resources
 
-from pyhigrid import __name__ as __main_package_name__
-from pyhigrid.configue.utils.logger_descriptor import LazyLogger
+import pyhigrid
 
 __all__ = [
     "DEFAULT_SCHEMA_FILE",
@@ -51,7 +51,7 @@ class Connector:
         with db as conn:
             conn.execute("...")
     """
-    logger = LazyLogger(f"{__main_package_name__}.{_package_name}")
+    logger = logging.getLogger(f"{pyhigrid.__name__}.{_package_name}")
 
     def __init__(self, db_path=None, schema_file=None):
         # 🔧 统一将路径转为字符串，方便后续判断

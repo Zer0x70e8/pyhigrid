@@ -1,122 +1,27 @@
 #
 """"""
 
-import os
-import sys
-import tempfile
+import logging
 from pathlib import Path
-from typing import Sequence, Annotated, Protocol, Tuple, Optional, TypedDict
 from uuid import UUID
+from typing import (
+    Sequence, Annotated, Protocol,
+    Tuple, Optional, TypedDict, cast, List, Union
+)
+
+from .utils.platform_dir import (
+    get_temp_dir, get_cache_dir,
+    get_user_data_dir, get_user_config_dir
+)
 
 from pyhigrid.__about__ import __author__, __title__, __version__
 from pyhigrid.resources import __file__ as resource_file
-try:
-    from pyhigrid.ui.ui_enum import UI
-except ImportError:
-    from enum import Enum
-
-    class UI(Enum):
-        GUI = "gui"
-        TUI = "tui"
-        CLI = "cli"
-
+from pyhigrid.ui.ui_enum import UI
 
 __all__ = ["UI",
-           "get_user_config_dir",
            "TABLE", "TYPE_MAP", "TWO_NUM_TYPE",
            "UIConfig"
            ]
-
-
-def get_user_config_dir(app_name: str, app_author: str = None) -> Path:
-    """
-    返回用户配置目录的 Path 对象。
-    遵循各平台默认规则：
-    - Windows: %APPDATA%/<author>/<app>  或  %APPDATA%/<app>
-    - macOS:   ~/Library/Application Support/<app>
-    - Linux:   ~/.config/<app>
-    """
-    if sys.platform == "win32":
-        base = os.environ.get("APPDATA", os.path.expanduser("~"))
-        if app_author:
-            return Path(base) / app_author / app_name
-        return Path(base) / app_name
-    elif sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / app_name
-    else:  # Linux 及其他 Unix
-        xdg_config = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
-        return Path(xdg_config) / app_name
-
-
-def get_user_data_dir(app_name: str, app_author: str = None) -> Path:
-    """
-    返回用户数据目录的 Path 对象。
-    遵循各平台默认规则：
-    - Windows: %APPDATA%/<author>/<app>  或  %APPDATA%/<app>
-    - macOS:   ~/Library/Application Support/<app>
-    - Linux:   $XDG_DATA_HOME/<app>      (默认 ~/.local/share/<app>)
-    注意：许多应用在 Windows/macOS 上将数据和配置放在同一目录下。
-    """
-    if sys.platform == "win32":
-        # Windows 中配置文件和数据通常共享 %APPDATA% 目录
-        base = os.environ.get("APPDATA", os.path.expanduser("~"))
-        if app_author:
-            return Path(base) / app_author / app_name
-        return Path(base) / app_name
-    elif sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / app_name
-    else:
-        xdg_data = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
-        return Path(xdg_data) / app_name
-
-
-def get_cache_dir(app_name: str, app_author: str = None):
-    """
-    持久缓存目录
-    """
-    # 持久缓存 (跨平台) — 优先使用 platformdirs，失败时用标准库降级
-    try:
-        # noinspection PyUnusedImports
-        from platformdirs import user_cache_dir
-        persistent = Path(user_cache_dir(app_name, app_author))
-    except ImportError:
-        persistent = _fallback_cache_dir(app_name, app_author)
-
-    return persistent
-
-
-def get_temp_dir(app_name: str) -> Path:
-    """
-    临时缓存目录
-    """
-    # 临时缓存 — 系统临时目录 + 应用子文件夹
-    temporary = Path(tempfile.gettempdir()) / app_name
-
-    temporary.mkdir(parents=True, exist_ok=True)
-
-    return temporary
-
-
-def _fallback_cache_dir(app_name: str, app_author: str = None) -> Path:
-    """不依赖第三方库时的手动实现，遵循各平台惯例"""
-    import sys
-    home = Path.home()
-
-    if sys.platform == "win32":
-        # Windows: %LOCALAPPDATA%\<author>\<app>\Cache
-        base = os.environ.get("LOCALAPPDATA", home / "AppData" / "Local")
-        if app_author:
-            return Path(base) / app_author / app_name / "Cache"
-        return Path(base) / app_name / "Cache"
-
-    elif sys.platform == "darwin":
-        # macOS: ~/Library/Caches/<app>
-        return home / "Library" / "Caches" / app_name
-
-    else:
-        # Linux 等: 遵循 XDG_CACHE_HOME，默认 ~/.cache
-        base = os.environ.get("XDG_CACHE_HOME", home / ".cache")
-        return Path(base) / app_name
 
 
 # =========
@@ -143,7 +48,7 @@ TABLE = {
         "confs": get_user_config_dir(__title__, __author__),
         "cache": get_cache_dir(__title__, __author__),  # PersistentCache
         "data": get_user_data_dir(__title__, __author__),
-        "resources": Path(resource_file),
+        "resources": Path(cast(str, resource_file)).parent,
         "temp": get_temp_dir(__title__ + "_tmp"),
         "thumbnails": get_cache_dir(__title__, __author__) / "thumbnails"
     },
@@ -151,6 +56,7 @@ TABLE = {
     "file": {  # It's just the name, not the full path.
         "log_conf_file": Path("logging.conf"),
         "album_db_file": Path("album.db"),
+        "qss_file": [Path("main_window.qss")]
     },
 
     "env_override": {
@@ -158,17 +64,8 @@ TABLE = {
     },
 
     "log": {
-        # "log_conf_file": Path("logging.conf"),
-        "verbose": False,  # More log output.
-        "quiet": False,  # Diable INFO log level output.
+        "level": logging.INFO,
     },
-
-    # "albums": {
-    #     "builtin": [
-    #         {"name": "all_photos", "uuid": None},  # None 表示用算法生成
-    #         {"name": "unorganized", "uuid": None},
-    #     ],
-    # },
 
     "ui": {
         "ui": UI.CLI,
@@ -187,9 +84,7 @@ TYPE_MAP = {
     "O": Optional[int],
 
     "log": {
-        "verbose": bool,
-        "quiet": bool,
-        # "log_conf_file": Path,
+        "level": Union[int, str],
     },
 
     "path": {
@@ -203,11 +98,8 @@ TYPE_MAP = {
     "file": {
         "log_conf_file": Path,
         "album_db_file": Path,
+        "qss_file": List[Path]
     },
-
-    # "albums": {
-    #     "builtin": [BuiltinAlbumDef],
-    # },
 
     "ui": {
         "ui": UI,

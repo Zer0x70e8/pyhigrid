@@ -1,7 +1,7 @@
 #
 """"""
 
-from logging import getLogger
+from importlib.resources import files
 
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt
@@ -12,22 +12,21 @@ from .frame import Frame
 
 from ..utils.window_resizer import WindowResizer
 from ..utils.disable_win11_round_corners import disable_round_corners
+from ..utils.loggers import get_logger
 
-from pyhigrid import __name__ as __main_package_name__
-from pyhigrid.resources import __file__ as __resources_file__
 from pyhigrid.configue import UIConfig
 
 __all__ = ['Window']
+
+RESOURCE_PACKAGE = 'pyhigrid.resources'
+DEFAULT_QSS_RESOURCE = 'default_theme_qss/main_window.qss'
 
 
 class Window(QWidget):
     def __init__(self):
         super().__init__()
 
-        self._logger = getLogger(
-            f"{__main_package_name__}.__ui__."
-            f"{type(self).__name__}"
-        )
+        self._logger = get_logger(self)
         self.container = None
         self.confs = None
         self.conf = None
@@ -78,12 +77,11 @@ class Window(QWidget):
 
         if __debug__:
             # noinspection SpellCheckingInspection
-            with open(
-                    f"{__resources_file__[0:-12]}/default_theme_qss/main_window.qss",
-                    "r", encoding="utf-8",
-
-                    ) as qss:
-                self.setStyleSheet(qss.read())
+            self.setStyleSheet(
+                files(RESOURCE_PACKAGE)
+                .joinpath(DEFAULT_QSS_RESOURCE)
+                .read_text(encoding='utf-8')
+            )
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -94,7 +92,9 @@ class Window(QWidget):
 
             self.content.layout_()
             self.content.overscroll_top = self.titlebar.height()
-            # self.content.unit_clicked.connect(lambda index: print(f"点击了单元：{index}"))
+            # self.content.unit_clicked.connect(
+            #   lambda index: print(f"点击了单元：{index}")
+            #   )
 
             self._first_refresh = True
 

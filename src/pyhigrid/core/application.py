@@ -5,11 +5,10 @@ import logging
 from typing import Optional
 
 from .bootstrapper import Container
-from pyhigrid.configue.utils.logger_descriptor import LazyLogger
 
 
 class _Application:
-    logger: logging.Logger = LazyLogger("__main__")
+    logger: logging.Logger = logging.getLogger("pyhigrid")
 
     def __init__(self):
         self.container: Optional[Container] = None

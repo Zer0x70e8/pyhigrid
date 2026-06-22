@@ -1,9 +1,17 @@
 #
 """"""
 
+import logging
+
 from .ui_enum import UI
 
+import pyhigrid
+
+UI_BASIC_LOGGER_NAME = f"{pyhigrid.__name__}.__ui__"
+logger = logging.getLogger(UI_BASIC_LOGGER_NAME)
+
 def import_ui(ui: UI):
+    logger.debug(f"Trying to import: {ui.value}")
     match ui:
         # case UI.CLI:
         #     import .
@@ -15,5 +23,5 @@ def import_ui(ui: UI):
             from .gui import Application as App
             return App
         case _:
-            raise RuntimeError(f"[UI] Not found: {ui.value}.")
+            raise RuntimeError(f"[UI] Not found: {ui.value}")
 
