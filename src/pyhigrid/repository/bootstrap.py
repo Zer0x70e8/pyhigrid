@@ -8,10 +8,16 @@ if TYPE_CHECKING:
 
 from .view import ViewRepository
 from .view_asset import ViewAssetRepository
+from .album import AlbumRepository
+from .asset_edit import AssetEditRepository
+from .trash import TrashRepository
 
 _map = {
     "view_repo": ViewRepository,
     "view_asset_repo": ViewAssetRepository,
+    "album_repo": AlbumRepository,
+    "asset_edit_repo": AssetEditRepository,
+    "trash_repo": TrashRepository,
 }
 
 def register_repository(
@@ -19,5 +25,5 @@ def register_repository(
 ):
     for name, cls in _map.items():
         container.register(
-            name, lambda: cls(container.get("db"))
+            name, lambda cls_=cls: cls_(container.get("db"))
         )

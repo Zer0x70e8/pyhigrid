@@ -107,6 +107,7 @@ source = { editable = "." }
 dependencies = [
     { name = "pillow" },
     { name = "pyside6" },
+    { name = "shiboken6" },
     { name = "tinycss2" },
 ]
 
@@ -120,6 +121,7 @@ requires-dist = [
     { name = "pillow", specifier = ">=10.0" },
     { name = "pyside6" },
     { name = "pyside6", marker = "extra == 'gui'", specifier = ">=6.5" },
+    { name = "shiboken6", specifier = ">=6.11.1" },
     { name = "tinycss2", specifier = ">=1.5.1" },
 ]
 provides-extras = ["gui", "cli"]

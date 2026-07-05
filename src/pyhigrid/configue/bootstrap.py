@@ -4,6 +4,7 @@ Configuration bootstrapping: load INI, environment, and CLI overrides,
 merge them with priority, and register the resulting Configue instance.
 """
 
+import copy
 import logging
 import traceback
 from pathlib import Path
@@ -26,27 +27,24 @@ early_logger = EarlyLogger("config_early", buffer_limit=2000)
 def build_configue():
     """Build the application configuration by layering INI, environment, and CLI overrides."""
     ini_path = Path(TABLE['path']['confs']) / "conf.ini"
-    early_logger.info(
-        "Configuration loading completed from file: %s", ini_path)
 
-    # 1. Load INI configuration file
     converters = {
         UI_ENUM: lambda s: UI_ENUM.__members__[s.upper()],
         TWO_NUM_TYPE: lambda s: tuple(int(x) for x in s.split(',')),
     }
 
-    try:
-        base_conf = load_ini(ini_path, TYPE_MAP, TABLE, converters=converters)
-        early_logger.debug(
-            "INI configuration loaded successfully, %d entries", len(base_conf))
-    except Exception:
-        early_logger.error("INI loading failed: %s", traceback.format_exc())
-        raise
-
-    base_conf = load_ini(ini_path, TYPE_MAP, TABLE,
-                         converters=converters,
-                         logger=early_logger
-                         )
+    # Check if configuration file exists
+    if ini_path.exists():
+        early_logger.info("Loading configuration from file: %s", ini_path)
+        try:
+            base_conf = load_ini(ini_path, TYPE_MAP, TABLE, converters=converters, logger=early_logger)
+            early_logger.debug("INI configuration loaded successfully, %d entries", len(base_conf))
+        except Exception:
+            early_logger.error("INI loading failed: %s", traceback.format_exc())
+            raise
+    else:
+        early_logger.warning("Configuration file not found: %s, using default configuration.", ini_path)
+        base_conf = copy.deepcopy(TABLE)
 
     # Promote __default__ to top level, preserving original order (top-level keys first)
     if "__default__" in base_conf:

@@ -14,8 +14,10 @@ def register_database(
         container  # type: Container
 ):
     # db_file = lambda conf: (conf.static.path.confs / conf.static.file.album_db_file)
-    db_file = lambda _: Path(r"E:\myCode\py\pyhigrid\assets\my_library.db")
+    # db_file = lambda _: Path(r"E:\myCode\py\pyhigrid\assets\my_library.db")
+    db_file = lambda _: Path(r"/data/myCode/py/pyhigrid/assets/my_library.db")
 
+    # noinspection PyTypeChecker
     container.register(
         "db", lambda: Connector(
             db_file(

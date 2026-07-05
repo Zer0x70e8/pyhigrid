@@ -8,10 +8,11 @@
 [![Stage](https://img.shields.io/badge/stage-alpha-orange.svg)]()
 
 > ⚠️ **Early Development Notice**  
-> This project is still in **active development**. Currently, the graphical user interface and a fully functional CLI backend are implemented; the image loading pipeline is being wired into the GUI.  
+> This project is still in **active development** (current version: **0.0.3**).  
+> The GUI now displays images in a grid and lets you switch between albums — but interaction is limited to viewing only (no selection yet). A fully functional CLI backend is implemented and shares the same database.  
 > It is a personal, spare‑time project — my very first public Python application. Progress is steady but may be slow. Contributions, feedback, and patience are deeply appreciated.
 
-**PyHIGrid** is an image grid tool designed to showcase your **Hyprland ricing setups** with a clean, HIG‑inspired interface. Once complete, it will turn a folder of screenshots or photos into a beautiful, scrollable gallery — perfect for sharing your desktop aesthetics.
+**PyHIGrid** is an image grid tool designed to showcase your **Hyprland ricing setups** with a clean, HIG‑inspired interface. It already lets you browse images in a responsive grid and switch between albums (view‑only at this stage). More interaction features are coming as development continues.
 
 ## ✨ Planned Features (current focus)
 
@@ -91,7 +92,7 @@ Use `python -m pyhigrid_cli --help` to see all available commands and `python -m
    python -m pyhigrid_cli --db my_library.db album create "My Album"
    ```
 
-All commands support common options: `--db` to specify the database, and `--verbose` for detailed logging.
+All commands support common options: `--db` to specify the database, and `--log-level trace` for detailed logging.
 
 ## 📁 Project Layout
 
@@ -121,20 +122,25 @@ src/
 ## 🧩 Dependencies
 
 - Python ≥ 3.10
-- Qt for Python – PySide6, PySide2, PyQt6, or PyQt5 (choose one)
+- Qt for Python – PySide6
 - Pillow ≥ 10.0
 - (CLI) No extra dependencies beyond the standard library and the project’s own modules
 
 ## 🛠 Development Status & Roadmap
 
 - [x] Custom window frame (titlebar + action buttons)
-- [x] Theming infrastructure
+- [ ] Theming infrastructure (only default theme, no switching yet)
 - [x] Backend logic & database layer (repositories, services)
-- [x] CLI interface for all core operations (init, import, view, trash, albums)
-- [x] Debug inspection command (`get`) – may be temporary
-- [ ] Image directory scanner & thumbnail generator (wiring to GUI)
-- [ ] Grid layout rendering
-- [ ] Full gallery interaction (selection, zoom, metadata)
+- [x] CLI interface for all core operations (init, import, view, trash, albums, debug `get`)
+- [x] Logging system (file config support, CLI arguments override e.g. log level)
+- [ ] Image directory scanner & thumbnail generator (wired to GUI, caching works but no cleanup yet)
+- [ ] Configuration system (lightweight, static config in use; dynamic capabilities exist but not yet utilized)
+- [x] Grid layout rendering & basic image viewing (view‑only, no selection yet)
+- [x] Album switching in the GUI
+- [ ] Album editing features (PRD in progress, service layer to be aligned with UI)
+- [ ] Gallery interaction (selection, zoom)
+- [ ] Single image detail view (requires virtual scrolling extensions, evaluating approaches)
+- [ ] Settings GUI (will drive further configuration expansion)
 - [ ] Packaging & proper PyPI release
 
 I work on PyHIGrid in my free time. This is my first open‑source project, so the pace is deliberate — every line is a learning step. If you’re curious, feel free to explore the code, open issues, or even send a PR.

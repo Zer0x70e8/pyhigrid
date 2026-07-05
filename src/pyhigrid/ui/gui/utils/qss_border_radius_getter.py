@@ -39,7 +39,7 @@ def extract_border_radius(qss_string: str, target_selector: str,
             continue  # 跳过 at-rule, 注释等
 
         prelude = node.prelude
-        content = node.content
+        content = node.viewer
 
         # 获取当前规则的选择器文本
         rule_selector = get_selector_text(prelude)

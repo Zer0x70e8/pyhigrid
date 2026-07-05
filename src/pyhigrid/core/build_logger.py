@@ -1,16 +1,21 @@
 #
-""""""
+"""
+Logging system initialization and registration.
+
+Sets up logging based on a configuration file or defaults, applies runtime
+level overrides from the configurator, and registers the logger in the DI container.
+"""
 
 import logging
 from logging.config import fileConfig
 from pathlib import Path
 from typing import Optional, Union
 
-from pyhigrid import __name__ as __main_package_name__
+import pyhigrid
 from pyhigrid.core import Container
 
 
-LoggerName = __main_package_name__
+LoggerName = pyhigrid.__name__
 
 TRACE = 5
 logging.addLevelName(TRACE, "TRACE")
@@ -22,15 +27,16 @@ def setup_logging(
     logger_name: str = "__main__"
 ) -> logging.Logger:
     """
-    初始化日志系统。
-    优先级：
-    1. 若 skip_configuration=True，则仅使用 basicConfig（不加载文件）。
-    2. 否则按以下顺序确定配置文件路径：
-       - 直接传入的 log_conf_path
-       - configurator 内置路径
-       - 若两者都没有，使用 basicConfig 并保持默认级别
-    3. 若提供了 configurator 且其包含 static.log.level，
-       则该值将作为 logger 的最终级别（覆盖文件中设置）。
+    Initialize the logging system.
+
+    Priority:
+    1. If skip_configuration is True, only basicConfig is used (no file loaded).
+    2. Otherwise, the config file path is determined by:
+       - directly passed log_conf_path
+       - configurator's built-in path
+       - if neither is available, basicConfig is used with default level.
+    3. If a configurator is provided and contains static.log.level,
+       that value is applied as the logger's final level (overriding file config).
     """
     if skip_configuration:
         logging.basicConfig(
@@ -40,7 +46,7 @@ def setup_logging(
         logger = logging.getLogger(logger_name)
         return logger
 
-    # 确定配置文件路径
+    # Determine configuration file path
     resolved_path: Optional[Path] = None
     if log_conf_path is not None:
         resolved_path = Path(log_conf_path)
@@ -49,12 +55,12 @@ def setup_logging(
             configurator.static.path.confs
             / configurator.static.file.log_conf_file
         )
-    # 如果仍未得到路径，不使用文件配置
+    # If no path resolved, skip file configuration
     if resolved_path is not None and resolved_path.is_file():
         if resolved_path.suffix == ".ini":
             fileConfig(resolved_path, disable_existing_loggers=False)
         else:
-            # 这里可以扩展支持 dictConfig 等
+            # Extendable to support dictConfig etc.
             logging.basicConfig(
                 format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                 level=logging.INFO
@@ -67,23 +73,23 @@ def setup_logging(
 
     logger = logging.getLogger(logger_name)
 
-    # 如果 configurator 提供了运行时级别，则强制应用（可选，注释掉则表示文件优先）
+    # If configurator provides a runtime level, apply it (overrides file config)
     if configurator is not None and hasattr(configurator.static.log, "level"):
         runtime_level = configurator.static.log.level
         if isinstance(runtime_level, int):
             logger.setLevel(runtime_level)
         else:
-            # 尝试将字符串级别名（包括自定义的 TRACE）转为数字
+            # Try to convert string level name (including custom TRACE) to numeric
             numeric_level = logging.getLevelName(runtime_level.upper())
             if isinstance(numeric_level, int):
                 logger.setLevel(numeric_level)
-            # 如果不是有效整数，说明级别名无效
             else:
                 logger.warning("Invalid log level: %s", runtime_level)
 
     return logger
 
 def register_logger(container: Container):
+    """Register the logger factory in the dependency injection container."""
     container.register(
         "logger",
         lambda: setup_logging(

@@ -13,6 +13,7 @@ from ..widget.top_window_action_buttons_widget import TopWindowActionButtonsWidg
 from ..widget.tool_bar_widget import (
     ToolBar, SearchBarLayoutPlaceholder
 )
+from ..utils.loggers import get_logger
 
 
 class _ToolBar(ToolBar):
@@ -64,6 +65,7 @@ class TitleBar(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.logger = get_logger(self, self.window())
 
         self.title = None
         self.action_widget = None
@@ -72,16 +74,12 @@ class TitleBar(QWidget):
 
         self.row_layout = None
 
-        self.logger = None
-
         self._first_refresh = False
 
         self.setup_()
         self.setup_ui()
 
-    def setup(self, logger):
-        self.logger = logger
-
+    def setup(self):
         self.setup_signal()
 
     def setup_(self):

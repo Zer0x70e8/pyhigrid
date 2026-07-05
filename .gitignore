@@ -15,7 +15,15 @@ eggs/
 # IDE - PyCharm
 .idea/
 
-#my tool
+# Environment
+.env
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# my tool
 tree.py
 
 # archive
@@ -23,4 +31,3 @@ test/archive/
 
 # assets
 assets/
-*.db

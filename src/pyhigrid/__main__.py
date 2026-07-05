@@ -5,6 +5,7 @@
 import sys
 import logging
 import traceback
+import gc
 
 import pyhigrid
 from pyhigrid.core import Application, Container
@@ -14,6 +15,8 @@ from pyhigrid.infrastructure.database import register_database
 from pyhigrid.repository import register_repository
 from pyhigrid.ui.bootstrap import register_ui
 
+
+# noinspection PyNoneFunctionAssignment
 def main_():
     end_code = -1
 
@@ -24,22 +27,24 @@ def main_():
     app: Application = Application()
     app.container = container
 
+    container.on(lambda: (
+        container.get("logger"),
+        logging.getLogger(pyhigrid.__name__)
+        .info("Program starting."),
+    ))
+
     # conf
-    register_configue(container)
+    register_configue(container)  # configue
 
     # log
-    register_logger(container)
+    register_logger(container)  # logger
 
-    #
-    container.reg("ui_end_code", lambda: end_code)
-    container.get("logger")  # Load immediately.
-    root_logger: logging.Logger = (
-        logging.getLogger(pyhigrid.__name__)
-    )
-    root_logger.info("Program starting.")
+    container.on(lambda: (
+        container.reg("ui_end_code", lambda: end_code)
+    ))
 
     # db
-    register_database(container)
+    register_database(container)  # db
 
     # repo
     register_repository(container)
@@ -47,12 +52,22 @@ def main_():
     # # bg
     #
 
+    # gc
+    container.on(lambda: (
+        (collected := gc.collect()),
+        gc.freeze(),
+        container.get("logger").info(
+            f"Garbage collection freed {collected} objects, "
+            f"freeze triggered."
+        )
+    ))
+
     # ui
     register_ui(container)
 
     # exec
+    container.on( lambda:container.get("logger").info("Program ended."))
     end_code = app.exec()
-    root_logger.info("Program ended.")
 
     return end_code
 

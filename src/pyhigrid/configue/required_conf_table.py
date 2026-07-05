@@ -16,6 +16,7 @@ from .utils.platform_dir import (
 
 from pyhigrid.__about__ import __author__, __title__, __version__
 from pyhigrid.resources import __file__ as resource_file
+from pyhigrid.domain.constants import UUID_ALL_PHOTOS
 from pyhigrid.ui.ui_enum import UI
 
 __all__ = ["UI",
@@ -73,6 +74,7 @@ TABLE = {
         "default_window_size": (800, 600),
         "default_tui_size": (80, 24),
         "use_system_round_corners": False,   # 是否启用 Windows 11 系统圆角，默认禁用（直角）
+        "default_current_view": UUID_ALL_PHOTOS
     },
 
 }
@@ -107,6 +109,7 @@ TYPE_MAP = {
         "default_window_size": TWO_NUM_TYPE,
         "default_tui_size": TWO_NUM_TYPE,
         "use_system_round_corners": bool,
+        "default_current_view": UUID,
     },
 }
 

@@ -107,8 +107,8 @@ class ViewRepository(BaseRepository):
             condition = "is_deleted = 1"
         elif album == BaseAlbum.VIDEOS:
             condition = "is_deleted = 0 AND mime_type LIKE 'video/%'"
-        # else:
-        #     raise ValueError(f"Unknown virtual album: {album}")
+        else:
+            raise ValueError(f"Unknown virtual album: {album}")
 
         if count_mode:
             return f"SELECT COUNT(*) FROM assets WHERE {condition}"
@@ -123,6 +123,9 @@ class ViewRepository(BaseRepository):
             "ORDER BY sort_order, created_at"
         )
         views = []
+        if not rows:
+            # self.logger.debug("No user albums found.")
+            return []
         for row in rows:
             album_id = row['id']
             # 资产数量

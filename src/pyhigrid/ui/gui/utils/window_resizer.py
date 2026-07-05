@@ -1,6 +1,9 @@
 #
 """Self-implemented window resizing functionality"""
 
+from typing import Optional
+from enum import IntFlag
+
 from PySide6.QtGui import QMouseEvent, QCursor
 from PySide6.QtCore import QObject, QEvent, Qt
 from PySide6.QtWidgets import QWidget, QApplication, QAbstractButton, QSlider, QComboBox
@@ -8,7 +11,7 @@ from PySide6.QtWidgets import QWidget, QApplication, QAbstractButton, QSlider, Q
 __all__ = ["WindowResizer", "Direction"]
 
 
-class Direction:
+class Direction(IntFlag):
     """Bit flags for resize directions. Combine using | operator."""
     NONE = 0
     UP = 1  # 0001
@@ -60,8 +63,8 @@ class WindowResizer(QObject):
       moves it under the mouse cursor before starting drag.
     """
 
-    def __init__(self, parent: QWidget = None,
-                 window_: QWidget = None,
+    def __init__(self, parent: Optional[QWidget] = None,
+                 window_: Optional[QWidget] = None,
                  setup_flag: bool = True):
         super().__init__(parent)
         self.window_ = window_
@@ -92,11 +95,20 @@ class WindowResizer(QObject):
     def title_bar_height(self, value: int):
         self._title_bar_height = value
 
+    @property
+    def win(self) -> QWidget:
+        if self.window_ is None:
+            raise RuntimeError("WindowResizer window not yet bound.")
+        return self.window_
+
     def install(self, window_: QWidget, setup_flag: bool = True):
         """Attach resizer to a window. If setup_flag is True, makes window frameless."""
         self.window_ = window_
         # Install filter globally to capture events even when mouse is over child widgets
-        QApplication.instance().installEventFilter(self)
+        app = QApplication.instance()
+        if app is None:
+            raise RuntimeError("QApplication instance not created yet")
+        app.installEventFilter(self)
         if not setup_flag:
             return
         window_.setMouseTracking(True)
@@ -112,7 +124,7 @@ class WindowResizer(QObject):
         # For all mouse events, check whether they belong to the target window.
         if isinstance(watched, QWidget):
             top_level = watched.window()
-            if top_level is not self.window_:
+            if top_level is not self.win:
                 return super().eventFilter(watched, event)
         else:
             return super().eventFilter(watched, event)
@@ -123,8 +135,8 @@ class WindowResizer(QObject):
 
         match event.type():
             case QEvent.Type.MouseMove:
-                if self.window_.isMaximized():
-                    self.window_.unsetCursor()
+                if self.win.isMaximized():
+                    self.win.unsetCursor()
                     return False
                 if not self.is_dragging:
                     # Update cursor shape based on edge proximity
@@ -141,9 +153,19 @@ class WindowResizer(QObject):
 
                 # No edge -> drag the whole window
                 if dir_flag == Direction.NONE:
-                    self.window_.windowHandle().startSystemMove()
-                    # self.window_.move(
-                    #     geo.x() + delta.x(), geo.y() + delta.y())
+                    # self.win.windowHandle().startSystemMove()
+                    # # self.win.move(
+                    # #     geo.x() + delta.x(), geo.y() + delta.y())
+                    edges = Qt.Edge(0)
+                    if dir_flag & Direction.LEFT:
+                        edges |= Qt.Edge.LeftEdge
+                    if dir_flag & Direction.RIGHT:
+                        edges |= Qt.Edge.RightEdge
+                    if dir_flag & Direction.UP:
+                        edges |= Qt.Edge.TopEdge
+                    if dir_flag & Direction.DOWN:
+                        edges |= Qt.Edge.BottomEdge
+                    self.win.windowHandle().startSystemResize(edges)
                     return True
 
                 # Resize logic: start from saved geometry, apply delta to edges
@@ -164,10 +186,10 @@ class WindowResizer(QObject):
                 old_w, old_h = w, h
 
                 # Clamp to min/max size
-                w = max(self.window_.minimumWidth(),
-                        min(self.window_.maximumWidth(), w))
-                h = max(self.window_.minimumHeight(),
-                        min(self.window_.maximumHeight(), h))
+                w = max(self.win.minimumWidth(),
+                        min(self.win.maximumWidth(), w))
+                h = max(self.win.minimumHeight(),
+                        min(self.win.maximumHeight(), h))
 
                 # Compensation: if width/height was clamped and resizing from left/top -> shift position.
                 if w != old_w and (dir_flag & Direction.LEFT):
@@ -175,13 +197,13 @@ class WindowResizer(QObject):
                 if h != old_h and (dir_flag & Direction.UP):
                     y -= (h - old_h)
 
-                self.window_.setGeometry(x, y, w, h)
+                self.win.setGeometry(x, y, w, h)
                 return False
 
             case QEvent.Type.MouseButtonPress:
-                local_pos = self.window_.mapFromGlobal(event.globalPosition().toPoint())
+                local_pos = self.win.mapFromGlobal(event.globalPosition().toPoint())
                 # If the mouse clicks on a button-type control, do not interfere.
-                child = self.window_.childAt(local_pos)
+                child = self.win.childAt(local_pos)
                 # print(f"Clicked widget: {child}, is button: {isinstance(child, QAbstractButton)}")
                 if child is not None and isinstance(child, QAbstractButton):
                     return super().eventFilter(watched, event)
@@ -190,29 +212,29 @@ class WindowResizer(QObject):
                 direction = self.get_direction(event)
 
                 # Maximized window handling: only allow drag from title bar
-                if self.window_.isMaximized():
+                if self.win.isMaximized():
                     # 重要：再次检查是否点击在按钮上（防止 childAt 失败或被覆盖）
                     if child is not None and isinstance(child, (QAbstractButton, QSlider, QComboBox)):
                         return False
                     if local_pos.y() <= self._title_bar_height:
                         global_pos = event.globalPosition().toPoint()
-                        screen = self.window_.screen()
+                        screen = self.win.screen()
                         screen_width = screen.geometry().width() if screen else 1920
 
                         # Ratio of mouse X within maximized window.
                         ratio = local_pos.x() / screen_width if screen_width > 0 else 0
 
-                        self.window_.showNormal()
+                        self.win.showNormal()
 
                         # Compute new position: keep same relative X offset from left,
                         # and place top near mouse Y minus margins.
-                        normal_width = self.window_.width()
+                        normal_width = self.win.width()
                         new_x = global_pos.x() - int(normal_width * ratio)
                         new_y = global_pos.y() - self._margin - int(self._title_bar_height / 2)
-                        self.window_.move(new_x, new_y)
+                        self.win.move(new_x, new_y)
 
                         # Update drag start state after move
-                        self.drag_start_geometry = self.window_.geometry()
+                        self.drag_start_geometry = self.win.geometry()
                         self.drag_start_pos = event.globalPosition().toPoint()
                         self.last_direction = Direction.NONE
                         self.is_dragging = True
@@ -226,14 +248,14 @@ class WindowResizer(QObject):
                 if direction != Direction.NONE:
                     # Start resizing
                     self.drag_start_pos = event.globalPosition().toPoint()
-                    self.drag_start_geometry = self.window_.geometry()
+                    self.drag_start_geometry = self.win.geometry()
                     self.last_direction = direction
                     self.is_dragging = True
                     return True
                 elif local_pos.y() <= self._title_bar_height:
                     # Start dragging (moving) only if in title bar area
                     self.drag_start_pos = event.globalPosition().toPoint()
-                    self.drag_start_geometry = self.window_.geometry()
+                    self.drag_start_geometry = self.win.geometry()
                     self.last_direction = Direction.NONE
                     self.is_dragging = True
                     return True
@@ -244,7 +266,7 @@ class WindowResizer(QObject):
             case QEvent.Type.MouseButtonRelease:
                 self.is_dragging = False
                 if self.get_direction(event) == Direction.NONE:
-                    self.window_.unsetCursor()
+                    self.win.unsetCursor()
                 return False
 
         return super().eventFilter(watched, event)
@@ -263,18 +285,18 @@ class WindowResizer(QObject):
             case Direction.BOTTOM_LEFT | Direction.TOP_RIGHT:
                 self.set_cursor(Qt.CursorShape.SizeBDiagCursor)
             case Direction.NONE:
-                self.window_.unsetCursor()
+                self.win.unsetCursor()
 
     def get_direction(self, event: QMouseEvent) -> int:
         """Get resize direction flags from mouse position relative to window."""
-        pos = self.window_.mapFromGlobal(event.globalPosition().toPoint())
+        pos = self.win.mapFromGlobal(event.globalPosition().toPoint())
         return Direction.from_mouse_pos(
             pos.x(), pos.y(),
-            self.window_.width(),
-            self.window_.height(),
+            self.win.width(),
+            self.win.height(),
             self.margin
         )
 
     def set_cursor(self, shape):
         """Helper to set window cursor."""
-        self.window_.setCursor(QCursor(shape))
+        self.win.setCursor(QCursor(shape))

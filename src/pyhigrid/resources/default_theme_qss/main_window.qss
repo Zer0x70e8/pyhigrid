@@ -1,10 +1,23 @@
+QWidget {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    color: #e0e0e0;
+}
+
+
 Window {
-    /* border: 24px; */
+    /* border: 16px; */
 }
 
 Frame {
-    border: 3px solid grey;
-    border-radius: 24px;
+    /* border: 3px solid grey; */
+    border-radius: 16px;
+}
+
+Content{
+    background-color: transparent;
+    qproperty-placeholderColor: grey;
+    qproperty-border_radius: 16;
 }
 
 /* Title */
@@ -15,8 +28,8 @@ TitleBar {
                                 stop:1 rgba(255, 255, 255, 0)
                                 );
     border-radius: 0;
-    border-top-left-radius: 24px;
-    border-top-right-radius: 24px;
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16 px;
 }
 
 #TitleToolBar {
@@ -198,4 +211,119 @@ TitleBar {
 
 #MaximizeButton:pressed {
     background-color: #1DAF34;
+}
+
+AlbumScrollAreaWidget {
+    background-color: #1DAF34;
+}
+
+
+
+/* AlbumInterface 自身背景（半透明，配合模糊效果） */
+AlbumInterface {
+    background: rgba(20, 20, 30, 0.92);
+    border-radius: 12px;
+}
+
+/* ===== 返回按钮 ===== */
+#AlbumBackButton {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 8px 24px;
+    margin: 16px 16px 0 16px;
+    font-weight: bold;
+    font-size: 14px;
+    color: #ffffff;
+}
+#AlbumBackButton:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+#AlbumBackButton:pressed {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* ===== 相册容器外框 ===== */
+#AlbumScrollAreaWidget {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    margin: 12px 16px;
+}
+
+/* ===== 标题栏 ===== */
+#AlbumTitleLabel {
+    font-size: 20px;
+    font-weight: 600;
+    color: #ffffff;
+    padding: 8px 16px 0 16px;
+}
+
+#AlbumEditButton {
+    background: rgba(80, 140, 255, 0.9);
+    border: none;
+    border-radius: 8px;
+    min-width: 32px;
+    max-width: 32px;
+    min-height: 32px;
+    max-height: 32px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #ffffff;
+    margin: 8px 16px 0 0;
+}
+#AlbumEditButton:hover {
+    background: rgba(100, 160, 255, 1);
+}
+#AlbumEditButton:pressed {
+    background: rgba(60, 120, 255, 0.9);
+}
+
+/* ===== 横向滚动区域 ===== */
+#AlbumScrollArea {
+    background: transparent;
+    border: none;
+    margin: 8px 16px 16px 16px;
+}
+/* 滚动条 */
+#AlbumScrollArea QScrollBar:horizontal {
+    height: 6px;
+    background: transparent;
+    margin: 0 10px;
+}
+#AlbumScrollArea QScrollBar::handle:horizontal {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 3px;
+    min-width: 30px;
+}
+#AlbumScrollArea QScrollBar::add-line:horizontal,
+#AlbumScrollArea QScrollBar::sub-line:horizontal {
+    width: 0px;
+}
+
+/* ===== 相册项目（假设 Item 继承 QPushButton 且对象名为 "albumItem"） ===== */
+#AlbumScrollArea QPushButton#Item {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #d0d0d0;
+    text-align: center;
+}
+#AlbumScrollArea QPushButton#AlbumItem:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+#AlbumScrollArea QPushButton#AlbumItem:pressed {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* 如果 Item 不是 QPushButton，可使用通用后备选择器 */
+#AlbumScrollArea QWidget#AlbumItem {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
 }
