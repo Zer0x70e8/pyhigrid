@@ -25,17 +25,17 @@ try:
 except ImportError:
     HAS_PIL = False
 
-# 添加项目 src 路径，保证导入 pyhigrid
+# 添加项目 src 路径，保证导入 albuswall
 src_path = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(src_path))
 
-from pyhigrid.domain.entities import FileImportInfo
-from pyhigrid.domain.enums import AlbumAssetSortOption
-from pyhigrid.infrastructure.database import Connector
-from pyhigrid.repository.importer import ImportRepository
-from pyhigrid.repository.view import ViewRepository
-from pyhigrid.repository.view_asset import ViewAssetRepository
-from pyhigrid.repository.asset_edit import AssetEditRepository
+from albuswall.domain.entities import FileImportInfo
+from albuswall.domain.enums import AlbumAssetSortOption
+from albuswall.infrastructure.database import Connector
+from albuswall.repository.importer import ImportRepository
+from albuswall.repository.view import ViewRepository
+from albuswall.repository.view_asset import ViewAssetRepository
+from albuswall.repository.asset_edit import AssetEditRepository
 
 # ---------------------------------------------------------------------------
 # 日志

@@ -3,6 +3,32 @@ revision = 3
 requires-python = ">=3.10"
 
 [[package]]
+name = "albuswall"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "pillow" },
+    { name = "pyside6" },
+    { name = "shiboken6" },
+    { name = "tinycss2" },
+]
+
+[package.optional-dependencies]
+gui = [
+    { name = "pyside6" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pillow", specifier = ">=10.0" },
+    { name = "pyside6" },
+    { name = "pyside6", marker = "extra == 'gui'", specifier = ">=6.5" },
+    { name = "shiboken6", specifier = ">=6.11.1" },
+    { name = "tinycss2", specifier = ">=1.5.1" },
+]
+provides-extras = ["gui", "cli"]
+
+[[package]]
 name = "pillow"
 version = "12.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -99,32 +125,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/5e/8b/51b0eddcfa2180d60e41f06bd6d0a62202b20b59c68f5a132e615b75aecf/pillow-12.2.0-pp311-pypy311_pp73-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:25373b66e0dd5905ed63fa3cae13c82fbddf3079f2c8bf15c6fb6a35586324c1", size = 6002215, upload-time = "2026-04-01T14:46:08.83Z" },
     { url = "https://files.pythonhosted.org/packages/bc/60/5382c03e1970de634027cee8e1b7d39776b778b81812aaf45b694dfe9e28/pillow-12.2.0-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:bfa9c230d2fe991bed5318a5f119bd6780cda2915cca595393649fc118ab895e", size = 7080946, upload-time = "2026-04-01T14:46:11.734Z" },
 ]
-
-[[package]]
-name = "pyhigrid"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "pillow" },
-    { name = "pyside6" },
-    { name = "shiboken6" },
-    { name = "tinycss2" },
-]
-
-[package.optional-dependencies]
-gui = [
-    { name = "pyside6" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "pillow", specifier = ">=10.0" },
-    { name = "pyside6" },
-    { name = "pyside6", marker = "extra == 'gui'", specifier = ">=6.5" },
-    { name = "shiboken6", specifier = ">=6.11.1" },
-    { name = "tinycss2", specifier = ">=1.5.1" },
-]
-provides-extras = ["gui", "cli"]
 
 [[package]]
 name = "pyside6"

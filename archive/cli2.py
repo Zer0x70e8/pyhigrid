@@ -34,12 +34,12 @@ src_path = Path(__file__).parent.parent  # 指向 .../src
 sys.path.insert(0, str(src_path))
 print("cwd:", os.getcwd())
 
-from pyhigrid.domain.entities import FileImportInfo
-from pyhigrid.domain.enums import AlbumAssetSortOption
-from pyhigrid.infrastructure.database import Connector
-from pyhigrid.repository.importer import ImportRepository
-from pyhigrid.repository.view import ViewRepository
-from pyhigrid.repository.view_asset import ViewAssetRepository
+from albuswall.domain.entities import FileImportInfo
+from albuswall.domain.enums import AlbumAssetSortOption
+from albuswall.infrastructure.database import Connector
+from albuswall.repository.importer import ImportRepository
+from albuswall.repository.view import ViewRepository
+from albuswall.repository.view_asset import ViewAssetRepository
 
 # ---------------------------------------------------------------------------
 # 日志设置

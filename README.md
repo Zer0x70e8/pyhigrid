@@ -1,7 +1,7 @@
-# PyHIGrid - Hyprland Image Gallery
+# AlbusWall - Hyprland Image Gallery
 
-**Say Hi to your memories, frame by frame.**  
-*A HIG‑like grid for the memories you hold.*
+**Your wall of memories, frame by frame.**  
+*A clean grid gallery for your ricing shots.*
 
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -12,7 +12,7 @@
 > The GUI now displays images in a grid and lets you switch between albums — but interaction is limited to viewing only (no selection yet). A fully functional CLI backend is implemented and shares the same database.  
 > It is a personal, spare‑time project — my very first public Python application. Progress is steady but may be slow. Contributions, feedback, and patience are deeply appreciated.
 
-**PyHIGrid** is an image grid tool designed to showcase your **Hyprland ricing setups** with a clean, HIG‑inspired interface. It already lets you browse images in a responsive grid and switch between albums (view‑only at this stage). More interaction features are coming as development continues.
+**albusWall** is an image grid tool designed to showcase your **Hyprland ricing setups** with a clean, HIG‑inspired interface.
 
 ## ✨ Planned Features (current focus)
 
@@ -29,8 +29,8 @@
 Clone the repository and install the required dependencies:
 
 ```bash
-git clone https://github.com/Zer0x70e8/pyhigrid.git
-cd pyhigrid
+git clone https://github.com/Zer0x70e8/albusWall.git
+cd albusWall
 pip install Pillow PySide6 
 ```
 
@@ -38,7 +38,7 @@ pip install Pillow PySide6
 
 ```bash
 cd src
-python -m pyhigrid
+python -m albuswall
 ```
 
 ### Command Line Interface (CLI)
@@ -48,48 +48,48 @@ The CLI provides full access to your media library — import, organise, manage 
 
 ```bash
 cd src
-python -m pyhigrid_cli --db <path/to/your/database.db> <subcommand>
+python -m albuswall_cli --db <path/to/your/database.db> <subcommand>
 ```
 
 If no `--db` is given, it defaults to `test_media.db` in the current directory.  
-Use `python -m pyhigrid_cli --help` to see all available commands and `python -m pyhigrid_cli <command> --help` for details of a sub‑command.
+Use `python -m albuswall_cli --help` to see all available commands and `python -m albuswall_cli <command> --help` for details of a sub‑command.
 
 #### Basic CLI Workflow
 
 1. **Initialise the database**  
    ```bash
-   python -m pyhigrid_cli --db my_library.db init
+   python -m albuswall_cli --db my_library.db init
    ```
 
 2. **Import images**  
    ```bash
-   python -m pyhigrid_cli --db my_library.db import /path/to/images --recursive
+   python -m albuswall_cli --db my_library.db import /path/to/images --recursive
    ```
 
 3. **List your built‑in views**  
    ```bash
-   python -m pyhigrid_cli --db my_library.db view
+   python -m albuswall_cli --db my_library.db view
    ```
 
 4. **See assets inside a view**  
    ```bash
-   python -m pyhigrid_cli --db my_library.db view --view-id <UUID> --list-assets
+   python -m albuswall_cli --db my_library.db view --view-id <UUID> --list-assets
    ```
 
 5. **Inspect full metadata of an asset (debug interface)**  
    ```bash
-   python -m pyhigrid_cli --db my_library.db get <asset-uuid>
+   python -m albuswall_cli --db my_library.db get <asset-uuid>
    ```
    > ⚠️ **Note:** `get` is a **debug‑only** command. It exposes internal data structures and **may be removed or changed** in future releases. Use it for development exploration only.
 
 6. **Soft‑delete an asset (move to trash)**  
    ```bash
-   python -m pyhigrid_cli --db my_library.db trash delete <asset-uuid>
+   python -m albuswall_cli --db my_library.db trash delete <asset-uuid>
    ```
 
 7. **Create and manage albums**  
    ```bash
-   python -m pyhigrid_cli --db my_library.db album create "My Album"
+   python -m albuswall_cli --db my_library.db album create "My Album"
    ```
 
 All commands support common options: `--db` to specify the database, and `--log-level trace` for detailed logging.
@@ -98,7 +98,7 @@ All commands support common options: `--db` to specify the database, and `--log-
 
 ```text
 src/
-├── pyhigrid/                # GUI application
+├── albuswall/                # GUI application
 │   ├── configue/            # Configuration system
 │   ├── core/                # Application lifecycle
 │   ├── domain/              # Domain models & constants
@@ -111,7 +111,7 @@ src/
 │   │       ├── window/      # Frameless window & title bar
 │   │       └── ...
 │   └── __main__.py
-├── pyhigrid_cli/            # CLI interface (shared backend)
+├── albuswall_cli/            # CLI interface (shared backend)
 │   ├── commands/            # Sub‑command handlers (init, import, view, …)
 │   ├── services/            # Business logic services (e.g. import)
 │   └── __main__.py
@@ -156,4 +156,4 @@ MIT – see [LICENSE](LICENSE) for details.
 
 ---
 
-*PyHIGrid – Say Hi to your memories, frame by frame.*
+*AlbusWall – Your wall of memories, frame by frame.*
