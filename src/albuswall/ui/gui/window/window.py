@@ -10,11 +10,12 @@ from albuswall.ui.gui.service import ContentService
 from albuswall.configue import UIConfig
 
 from .content import Content
-from .presenter import ContentPresenter, AlbumPresenter
+from .presenter import ContentPresenter, AlbumPresenter, ViewPresenter
 from .titlebar import TitleBar
 from .frame import Frame
 from .album import AlbumInterface
-# from .viewer import View
+from .viewer import View
+from .menu import Menu
 
 from ..utils.window_resizer import WindowResizer
 from ..utils.disable_win11_round_corners import disable_round_corners
@@ -44,10 +45,12 @@ class Window(QWidget):
         self.frame = None
         self.album_interface = None
         self.viewer = None
+        self.menu = None
 
         self.content_service = None
         self.content_presenter = None
         self.album_presenter = None
+        self.view_presenter = None
 
         self.setup_ui()
 
@@ -85,6 +88,7 @@ class Window(QWidget):
         # 保存引用（可选，如果需要后续访问）
         self.content_service = content_service
         self.content_presenter = content_presenter
+        self.view_presenter = ViewPresenter(self.viewer, self)
         # -----------------------------------------
 
         # ---- 组装 AlbumInterface 与 AlbumPresenter ----
@@ -112,6 +116,18 @@ class Window(QWidget):
             )
         )
 
+        # 当 Content 中的图片被点击时，获取其完整路径并显示
+        # 通过 Presenter 的信号连接
+        self.content_presenter.image_clicked.connect(
+            self.view_presenter.show_image_from_path
+        )
+
+        # 查看器退出按钮 → 隐藏查看器
+        self.viewer.quit_button.clicked.connect(self.view_presenter.hide)
+
+        #
+        self.titlebar.tool_bar.more_button.setMenu(self.menu)
+
         #
         self._logger.debug("The UI setup completed.")
 
@@ -120,7 +136,8 @@ class Window(QWidget):
         self.content = Content(self)
         self.titlebar = TitleBar(self)
         self.frame = Frame(self)
-        # self.viewer = View(self)
+        self.viewer = View(self)
+        self.menu = Menu(self)
 
         #
         self.content.lower()
@@ -142,9 +159,6 @@ class Window(QWidget):
                 disable_round_corners(hwnd)
 
             self.content.overscroll_top = self.titlebar.height()
-            # self.content.unit_clicked.connect(
-            #   lambda index: print(f"点击了单元：{index}")
-            #   )
 
             self._first_refresh = True
 
@@ -156,10 +170,10 @@ class Window(QWidget):
             0, 18,
             self.width(), self.height() - 18
         )
-        # self.viewer.setGeometry(
-        #     0, 18,
-        #     self.width(), self.height() - 18
-        # )
+        self.viewer.setGeometry(
+            0, 18,
+            self.width(), self.height() - 18
+        )
 
     def closeEvent(self, event):
         self.hide()

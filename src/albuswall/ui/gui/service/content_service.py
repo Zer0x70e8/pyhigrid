@@ -252,3 +252,14 @@ class ContentService(QObject):
         if worker in self._persist_workers:
             self._persist_workers.remove(worker)
         worker.deleteLater()
+
+    def get_asset_file_path(self, index: int) -> Optional[str]:
+        """返回当前视图中指定索引的资源原始文件路径，失败返回 None"""
+        if not self._current_view_id or not self._view_asset_repo:
+            return None
+        assets = self._view_asset_repo.get_assets(
+            self._current_view_id, offset=index, limit=1
+        )
+        if assets and len(assets) > 0:
+            return assets[0].file_path
+        return None

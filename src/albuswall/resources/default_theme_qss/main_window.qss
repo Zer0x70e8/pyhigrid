@@ -327,3 +327,27 @@ AlbumInterface {
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 10px;
 }
+
+
+CollapsibleGroupBox {
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    margin-top: 1.2em;
+    font-weight: bold;
+    qproperty-simble_on_extend: "↓";
+    qproperty-simble_on_collapsible: "→";
+}
+CollapsibleGroupBox::title {
+    subcontrol-origin: margin;
+    left: 20px;
+    padding: 0 5px;
+    top: 0.8em;
+}
+CollapsibleGroupBox[collapsed="true"] {
+    border: none;
+    border-top: 1px solid #aaa;
+    background: transparent;
+}
+CollapsibleGroupBox[collapsed="true"]::title {
+    background: palette(window);
+}

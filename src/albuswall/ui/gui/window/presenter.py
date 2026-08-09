@@ -9,11 +9,14 @@ from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QPixmap
 
 from .content import Content
+from .viewer import View
 from ..service import ContentService
 from albuswall.repository.view import ViewRepository
 
 
 class ContentPresenter(QObject):
+    image_clicked = Signal(str)
+
     def __init__(self, view: Content, service: ContentService, parent=None):
         super().__init__(parent)
         self._view = view
@@ -22,6 +25,9 @@ class ContentPresenter(QObject):
 
         # Presenter 连接 View 的信号
         view.visible_range_changed.connect(self._on_visible_range_changed)
+        # 连接 Content 的点击信号
+        view.unit_clicked.connect(self._on_unit_clicked)
+
 
     def initialize_view(self, default_view_id: str):
         """首次加载时设置视图范围"""
@@ -60,6 +66,11 @@ class ContentPresenter(QObject):
         # 直接传递实际尺寸给 Service，Service 内部做映射和去重
         self._service.request_thumbnails(start, end, actual_cell_size, on_result)
 
+    def _on_unit_clicked(self, index: int):
+        """将索引转换为原图路径，然后发射 image_clicked 信号"""
+        path = self._service.get_asset_file_path(index)  # 需要 Service 提供此方法
+        if path:
+            self.image_clicked.emit(path)
 
 @dataclass
 class AlbumItemData:
@@ -122,3 +133,52 @@ class AlbumPresenter(QObject):
             for v in views
         ]
         self.data_changed.emit(self._items)
+
+
+class ViewPresenter(QObject):
+    """
+    控制图像查看器 (View) 的显示与隐藏，默认隐藏。
+    对外提供 show_image / hide 方法，用于响应外部事件。
+    """
+    # 可选：当显示/隐藏时发出信号，方便其他模块监听
+    shown = Signal()
+    hidden = Signal()
+
+    def __init__(self, view: View, parent=None):
+        super().__init__(parent)
+        self._view = view
+        # 默认隐藏
+        self._view.hide()
+
+    def show_image(self, pixmap: QPixmap):
+        """加载图像并显示 Viewer"""
+        if pixmap.isNull():
+            return
+        self._view.viewer.load_pixmap(pixmap)   # View 内部持有 ImageViewer 实例
+        self._view.show()
+        self.shown.emit()
+
+    def show_image_from_path(self, path: str):
+        """便捷方法：从文件路径加载并显示"""
+        pixmap = QPixmap(path)
+        if pixmap.isNull():
+            # 可选：记录日志
+            return
+        self.show_image(pixmap)
+
+    def hide(self):
+        """隐藏 Viewer"""
+        self._view.hide()
+        self.hidden.emit()
+
+    def toggle(self, pixmap: QPixmap):
+        """切换显示状态：若当前可见则隐藏，否则显示给定图像"""
+        if self._view.isVisible():
+            self.hide()
+        else:
+            self.show_image(pixmap)
+
+    @property
+    def is_visible(self) -> bool:
+        return self._view.isVisible()
+

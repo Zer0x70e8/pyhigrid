@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QSizePolicy, QFrame
 )
 
-from ..widget.blur_overlay_lable import BlurLabel
+from ..widget.blur_overlay_label import BlurLabel
 from ..widget.horizontal_square_scroll_area import HorizontalSquareScrollArea, Item
 from .presenter import AlbumPresenter, AlbumItemData
 
