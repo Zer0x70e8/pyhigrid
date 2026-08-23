@@ -116,7 +116,7 @@ class HorizontalSquareScrollArea(QScrollArea):
         if widget in self._items:
             self._items.remove(widget)
             self._layout.removeWidget(widget)
-            widget.setParent(None)  # 可选：若需彻底删除则调用 widget.deleteLater()
+            widget.setParent(None)  # 可选：若需彻底删除则调用 widgets.deleteLater()
             self._updateLayout()
 
     def clear(self):
@@ -192,7 +192,7 @@ class HorizontalSquareScrollArea(QScrollArea):
             while self._layout.count():
                 self._layout.takeAt(0)
                 # item = self._layout.takeAt(0)
-                # # 不需要 delete，因为 widget 仍然被 self._items 持有
+                # # 不需要 delete，因为 widgets 仍然被 self._items 持有
 
             square_size = w / self._ratio
             item_size = QSize(int(square_size), int(square_size))

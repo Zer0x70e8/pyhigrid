@@ -6,11 +6,11 @@ from typing import Final, cast
 from PySide6.QtWidgets import QVBoxLayout, QLabel
 
 try:
-    from ..widget.collapsible_group_box import CollapsibleGroupBox
-    from ..anim.collapse_animation import HeightSlideAnimation
+    from ..widgets.collapsible_group_box import CollapsibleGroupBox
+    from ..anims.collapse_animation import HeightSlideAnimation
 except ImportError:
-    from albuswall.ui.gui.widget.collapsible_group_box import CollapsibleGroupBox
-    from albuswall.ui.gui.anim.collapse_animation import HeightSlideAnimation
+    from albuswall.ui.gui.widgets.collapsible_group_box import CollapsibleGroupBox
+    from albuswall.ui.gui.anims.collapse_animation import HeightSlideAnimation
 
 from albuswall.__about__ import (
     __title__, __version__, __author__,

@@ -8,7 +8,7 @@ class CollapseAnimation:
     """
     Base class / interface for collapse animation.
 
-    Provides a default no-animation implementation: directly toggle the widget's visible state
+    Provides a default no-animation implementation: directly toggle the widgets's visible state
     and instantly set its maximum height. Subclasses can override these methods to add animation
     effects (e.g., HeightSlideAnimation).
     """
@@ -27,10 +27,10 @@ class CollapseAnimation:
 
         Default behavior: immediately remove
         the maximum height restriction (set to a very large value),
-        then show the widget, and call the optional callback on_finished when done.
+        then show the widgets, and call the optional callback on_finished when done.
 
         Parameters:
-            content_widget: The content widget to expand (usually a QWidget).
+            content_widget: The content widgets to expand (usually a QWidget).
             group_box: The container that holds content_widget (not used directly by this base class,
                        available for subclasses).
             on_finished: Callback function (no arguments) called after the expand operation completes.
@@ -48,11 +48,11 @@ class CollapseAnimation:
         """
         Perform collapse operation.
 
-        Default behavior: hide the widget and immediately set its maximum height to 0,
+        Default behavior: hide the widgets and immediately set its maximum height to 0,
         then call on_finished.
 
         Note:
-            Using hide() makes the widget invisible, while setMaximumHeight(0) ensures the layout
+            Using hide() makes the widgets invisible, while setMaximumHeight(0) ensures the layout
             does not reserve space for it. If only hide() is used without restricting height,
             some layouts may still allocate space.
         """
@@ -86,7 +86,7 @@ class HeightSlideAnimation(CollapseAnimation):
                        ):
         self.stop()
 
-        # Show the widget (ensure it is not hidden,
+        # Show the widgets (ensure it is not hidden,
         #   otherwise the height animation cannot work)
         content_widget.show()
 
@@ -96,7 +96,7 @@ class HeightSlideAnimation(CollapseAnimation):
         full_height = content_widget.sizeHint().height()
 
         # Determine the starting height for the animation
-        # If the widget is not visible (theoretically collapsed), start from 0;
+        # If the widgets is not visible (theoretically collapsed), start from 0;
         # otherwise start from the current visible height
         #   (supports interrupted continuous animation)
         start_h = 0 if not content_widget.isVisible() else content_widget.height()

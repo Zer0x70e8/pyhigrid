@@ -8,9 +8,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Property, Qt
 
 try:
-    from ..anim.collapse_animation import CollapseAnimation
+    from ..anims.collapse_animation import CollapseAnimation
 except ImportError:
-    from albuswall.ui.gui.anim.collapse_animation import CollapseAnimation
+    from albuswall.ui.gui.anims.collapse_animation import CollapseAnimation
 
 
 # noinspection PyPep8Naming,PyShadowingNames
@@ -182,7 +182,7 @@ class CollapsibleGroupBox(QGroupBox):
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication, QLabel, QCheckBox
-    from albuswall.ui.gui.anim.collapse_animation import HeightSlideAnimation
+    from albuswall.ui.gui.anims.collapse_animation import HeightSlideAnimation
 
     app = QApplication(sys.argv)
     win = QWidget()

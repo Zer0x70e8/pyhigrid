@@ -1,5 +1,5 @@
 #
-"""Virtual scroll widget"""
+"""Virtual scroll widgets"""
 
 from .widget import VirtualScrollWidget
 

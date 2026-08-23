@@ -7,9 +7,9 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from ..widget.blur_overlay_label import BlurLabel
-from ..widget.image_viwer import ImageViewer
-from ..widget.slide_up_scroll_container import SlideUpScrollContainer
+from ..widgets.blur_overlay_label import BlurLabel
+from ..widgets.image_viwer import ImageViewer
+from ..widgets.slide_up_scroll_container import SlideUpScrollContainer
 
 
 class View(BlurLabel):

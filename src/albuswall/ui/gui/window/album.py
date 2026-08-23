@@ -8,8 +8,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QSizePolicy, QFrame
 )
 
-from ..widget.blur_overlay_label import BlurLabel
-from ..widget.horizontal_square_scroll_area import HorizontalSquareScrollArea, Item
+from ..widgets.blur_overlay_label import BlurLabel
+from ..widgets.horizontal_square_scroll_area import HorizontalSquareScrollArea, Item
 from .presenter import AlbumPresenter, AlbumItemData
 
 
@@ -112,10 +112,10 @@ class AlbumInterface(BlurLabel):
         # if hasattr(self.album_area, 'clear'):
         #     self.album_area.clear()
         # else:
-        #     while self.album_area.widget().count():
-        #         child = self.album_area.widget().takeAt(0)
-        #         if child.widget():
-        #             child.widget().deleteLater()
+        #     while self.album_area.widgets().count():
+        #         child = self.album_area.widgets().takeAt(0)
+        #         if child.widgets():
+        #             child.widgets().deleteLater()
 
         # 根据数据创建新项
         for data in items:

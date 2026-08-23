@@ -1,5 +1,5 @@
 #
-"""top window action buttons widget"""
+"""top window action buttons widgets"""
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -179,7 +179,7 @@ if __name__ == "__main__":
     widget = TopWindowActionButtonsWidget(window)
 
     # 测试：可以在这里调用 set_act_btn_position 切换位置
-    # widget.set_act_btn_position("left")
+    # widgets.set_act_btn_position("left")
 
     layout_ = QVBoxLayout(window)
     layout_.setContentsMargins(0, 0, 0, 0)

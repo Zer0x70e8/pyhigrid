@@ -16,7 +16,7 @@ class SlideUpScrollContainer(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
-        # 内部根 widget
+        # 内部根 widgets
         self._root = QWidget()
         self._root_layout = QVBoxLayout(self._root)
         self._root_layout.setContentsMargins(0, 0, 0, 0)

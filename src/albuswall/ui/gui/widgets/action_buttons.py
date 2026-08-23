@@ -1,7 +1,7 @@
 #
 """Action buttons for window controls.
 
-This module provides a set of customizable buttons for common window actions:
+This modules provides a set of customizable buttons for common window actions:
 close, minimize, maximize, pin (stay on top), and fold (collapse/expand).
 All buttons are derived from QPushButton and emit signals or perform actions
 directly on the parent window.
@@ -48,7 +48,7 @@ class MaximizeButton(QPushButton):
         """
         Initialize the maximize/restore button.
 
-        :param parent: Optional parent widget.
+        :param parent: Optional parent widgets.
         :param title_bar_height: Height of the title bar (used for geometry consistency).
         :param margin: Margin around the button (currently unused, kept for compatibility).
         """

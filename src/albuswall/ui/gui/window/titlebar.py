@@ -8,9 +8,9 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal
 
-from ..widget.title_and_icon import TitleAndIcon
-from ..widget.top_window_action_buttons_widget import TopWindowActionButtonsWidget
-from ..widget.tool_bar_widget import (
+from ..widgets.title_and_icon import TitleAndIcon
+from ..widgets.top_window_action_buttons_widget import TopWindowActionButtonsWidget
+from ..widgets.tool_bar_widget import (
     ToolBar, SearchBarLayoutPlaceholder
 )
 from ..utils.loggers import get_logger

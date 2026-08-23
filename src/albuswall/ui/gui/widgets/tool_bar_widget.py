@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QWidget, QHBoxLayout, QLineEdit,
                                QPushButton, QFrame, QComboBox
                                )
 
-from ..anim.search_bar_anim import Anim
+from ..anims.search_bar_anim import Anim
 
 class SearchBarLayoutPlaceholder(QWidget):
     clicked = Signal()
@@ -222,7 +222,7 @@ class ToolBar(QWidget):
         self.folded_search_bar.emit()
 
     def _on_anim_finished(self):
-        # 由 anim 内部的 _finish_transition 已经 emit layout_squeezed(False)，
+        # 由 anims 内部的 _finish_transition 已经 emit layout_squeezed(False)，
         # 这里只处理控件显隐
         if not self.is_expanded and self._search_bar:
             self._search_bar.hide()

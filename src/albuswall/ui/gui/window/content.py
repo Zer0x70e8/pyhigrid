@@ -3,7 +3,7 @@
 
 from PySide6.QtCore import Signal, Qt
 
-from ..widget.virtual_scroll import VirtualScrollWidget
+from ..widgets.virtual_scroll import VirtualScrollWidget
 
 class Content(VirtualScrollWidget):
     item_double_clicked = Signal(int)

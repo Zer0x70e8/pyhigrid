@@ -18,7 +18,7 @@ __all__ = ["ImageViewer"]
 
 
 class ImageViewer(QWidget):
-    """A custom widget that displays a zoomable and pannable image."""
+    """A custom widgets that displays a zoomable and pannable image."""
 
     # Zoom limits and step
     MIN_ZOOM = 0.1
@@ -42,7 +42,7 @@ class ImageViewer(QWidget):
         self.setMinimumSize(10, 10)
 
     def set_scroll_area(self, scroll_area):
-        """Store a reference to the QScrollArea that contains this widget."""
+        """Store a reference to the QScrollArea that contains this widgets."""
         self._scroll_area = scroll_area
 
     # ---------- Drag control ----------
@@ -122,7 +122,7 @@ class ImageViewer(QWidget):
             super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent):
-        """If the mouse button is released inside the widget, stop dragging."""
+        """If the mouse button is released inside the widgets, stop dragging."""
         if event.button() == Qt.MouseButton.LeftButton and self._dragging:
             self._stop_drag()
             event.accept()
@@ -131,7 +131,7 @@ class ImageViewer(QWidget):
 
     # ---------- Zoom, load, paint (unchanged core logic) ----------
     def load_pixmap(self, pixmap: QPixmap):
-        """Load a new pixmap, reset zoom to 100%, and resize the widget."""
+        """Load a new pixmap, reset zoom to 100%, and resize the widgets."""
         self._pixmap = pixmap
         self._zoom_factor = 1.0
         if not pixmap.isNull():
@@ -150,14 +150,14 @@ class ImageViewer(QWidget):
 
     def set_zoom_factor(self, factor: float):
         """Apply a new zoom factor, clamped to allowed range.
-        Resizes the widget and triggers a repaint."""
+        Resizes the widgets and triggers a repaint."""
         if self._pixmap.isNull():
             return
         factor = max(self.MIN_ZOOM, min(self.MAX_ZOOM, factor))
         if abs(factor - self._zoom_factor) < 1e-6:
             return
         self._zoom_factor = factor
-        # Update widget size to reflect the zoomed image dimensions
+        # Update widgets size to reflect the zoomed image dimensions
         new_size = (self._pixmap.size().toSizeF() * self._zoom_factor).toSize()
         self.resize(new_size)
         self.update()
@@ -201,16 +201,16 @@ if __name__ == "__main__":
 
         def __init__(self):
             super().__init__()
-            self.setWindowTitle("Image Viewer - Zoom changes widget size")
+            self.setWindowTitle("Image Viewer - Zoom changes widgets size")
             self.resize(800, 600)
 
             # Scroll area that will contain the image viewer
             self.scroll_area = QScrollArea()
             self.scroll_area.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            # Disable automatic widget resizing so the viewer keeps its natural size
+            # Disable automatic widgets resizing so the viewer keeps its natural size
             self.scroll_area.setWidgetResizable(False)
 
-            # Image viewer widget
+            # Image viewer widgets
             self.image_viewer = ImageViewer()
             self.scroll_area.setWidget(self.image_viewer)
             self.image_viewer.set_scroll_area(self.scroll_area)

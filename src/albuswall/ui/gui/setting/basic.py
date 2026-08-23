@@ -9,16 +9,16 @@ from PySide6.QtCore import Qt
 
 # if __package__ is None or __package__ == '':
 try:
-    from ..widget.blur_overlay_label import BlurLabel
-    from ..widget.collapsible_group_box import CollapsibleGroupBox
+    from ..widgets.blur_overlay_label import BlurLabel
+    from ..widgets.collapsible_group_box import CollapsibleGroupBox
 except ImportError:
     # BlurLabel = QWidget
-    from albuswall.ui.gui.widget.blur_overlay_label import BlurLabel
-    from albuswall.ui.gui.widget.collapsible_group_box import CollapsibleGroupBox
+    from albuswall.ui.gui.widgets.blur_overlay_label import BlurLabel
+    from albuswall.ui.gui.widgets.collapsible_group_box import CollapsibleGroupBox
 
 
 class Setting(QWidget):
-    """Setting widget: standalone window or embedded child."""
+    """Setting widgets: standalone window or embedded child."""
 
     def __init__(self,
                  parent=None,

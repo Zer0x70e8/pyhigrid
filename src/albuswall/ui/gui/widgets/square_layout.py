@@ -22,7 +22,7 @@ class SquareLayout(QLayout):
     def __init__(self, orientation=Qt.Orientation.Vertical, parent=None):
         super().__init__(parent)
         self._orientation = orientation
-        self._items = []  # 存储 (widget, stretch) 元组
+        self._items = []  # 存储 (widgets, stretch) 元组
         self._spacing = 5
         self._margins = (5, 5, 5, 5)
 

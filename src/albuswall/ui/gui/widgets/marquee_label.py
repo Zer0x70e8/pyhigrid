@@ -50,7 +50,7 @@ class MarqueeLabel(QLabel):
 
         # Gap between text copies (pixels)
         self._spacing_px = 0            # Actual gap in pixels
-        self._spacing_ratio = 0.0       # Gap as ratio of widget width (0~1), higher priority than fixed pixels
+        self._spacing_ratio = 0.0       # Gap as ratio of widgets width (0~1), higher priority than fixed pixels
 
         # DPI scaling factor
         self._dpi_factor = self._get_dpi_factor()
@@ -74,8 +74,8 @@ class MarqueeLabel(QLabel):
     # noinspection PyPep8Naming
     def setSpacingRatio(self, ratio: float):
         """
-        Set gap between text copies as a ratio of widget width (0~1).
-        E.g., ratio=0.2 means gap = 20% of widget width.
+        Set gap between text copies as a ratio of widgets width (0~1).
+        E.g., ratio=0.2 means gap = 20% of widgets width.
         """
         self._spacing_ratio = max(0.0, min(1.0, ratio))
         self._update_spacing_from_ratio()
@@ -102,7 +102,7 @@ class MarqueeLabel(QLabel):
         return 1.0
 
     def _update_spacing_from_ratio(self):
-        """Calculate actual pixel gap from ratio and current widget width."""
+        """Calculate actual pixel gap from ratio and current widgets width."""
         if self._spacing_ratio > 0:
             width = self.contentsRect().width()
             self._spacing_px = int(width * self._spacing_ratio)
@@ -116,7 +116,7 @@ class MarqueeLabel(QLabel):
         self._text_width = fm.horizontalAdvance(self.full_text)
 
     def _update_scroll_state(self):
-        """Determine whether scrolling is needed based on text and widget width."""
+        """Determine whether scrolling is needed based on text and widgets width."""
         if self._spacing_ratio > 0:
             self._update_spacing_from_ratio()
 
@@ -227,7 +227,7 @@ class MarqueeLabel(QLabel):
         painter.end()
 
     def resizeEvent(self, event):
-        """Re-evaluate scroll state when widget is resized, cancel pending start."""
+        """Re-evaluate scroll state when widgets is resized, cancel pending start."""
         self._cancel_pending_start()
         super().resizeEvent(event)
         self._update_text_width()

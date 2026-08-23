@@ -1,5 +1,5 @@
 """
-BlurLabel – a QLabel that renders a live blurred snapshot of a target widget as its background.
+BlurLabel – a QLabel that renders a live blurred snapshot of a target widgets as its background.
 Only the area occupied by the label is blurred.
 """
 
@@ -22,14 +22,14 @@ class BlurLabel(QLabel):
     """
     A label with a real-time frosted-glass blur effect.
 
-    The label shows a blurred version of the underlying *target* widget,
+    The label shows a blurred version of the underlying *target* widgets,
     but **only within its own bounding rectangle**.  The rest of the target
     remains perfectly visible.
 
-    :param target:      The widget whose appearance is blurred.
+    :param target:      The widgets whose appearance is blurred.
     :param text:        Label text (same as QLabel).
     :param blur_radius: Blur radius (default 15).
-    :param parent:      Parent widget (required so the label acts as a SubWindow).
+    :param parent:      Parent widgets (required so the label acts as a SubWindow).
     """
 
     def __init__(self, *args, target: Optional[QWidget] = None,
@@ -76,7 +76,7 @@ class BlurLabel(QLabel):
         self._target = widget
 
     def _update_blur(self) -> None:
-        """Capture the target widget and generate a blurred background."""
+        """Capture the target widgets and generate a blurred background."""
         if self._updating:
             return
         self._updating = True
@@ -131,7 +131,7 @@ class BlurLabel(QLabel):
     def paintEvent(self, event: QPaintEvent) -> None:
         """
         Draw the blurred pixmap only for the region that corresponds to
-        this label's position over the target widget.
+        this label's position over the target widgets.
         """
         if self._blurred_pixmap and self._target:
             painter = QPainter(self)
@@ -148,7 +148,7 @@ class BlurLabel(QLabel):
         super().paintEvent(event)
 
     def resizeEvent(self, event: QResizeEvent) -> None:
-        """Debounce blur updates when the widget is resized."""
+        """Debounce blur updates when the widgets is resized."""
         self._update_timer.start()
         super().resizeEvent(event)
 

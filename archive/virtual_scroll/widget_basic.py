@@ -109,14 +109,14 @@ class VirtualScrollWidgetBasic(QWidget):
     # calculate
     def _get_cell_size(self) -> int:
         """
-        Calculate the side length of a single grid cell based on the widget's current width
+        Calculate the side length of a single grid cell based on the widgets's current width
         and the configured number of columns.
 
         Returns:
             A positive integer representing the cell size in pixels.
         """
         w = self.contentsRect().width()
-        if w <= 0:  # if widget has no valid width
+        if w <= 0:  # if widgets has no valid width
             return self.fallback_cell_size  # fallback size
         return w // self.single_row_num
 

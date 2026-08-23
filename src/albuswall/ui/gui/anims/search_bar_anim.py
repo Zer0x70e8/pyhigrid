@@ -7,7 +7,7 @@ from PySide6.QtCore import QPropertyAnimation, QEasingCurve, QRect
 
 if TYPE_CHECKING:
     # noinspection PyUnusedImports
-    from ..widget.tool_bar_widget import ToolBar
+    from ..widgets.tool_bar_widget import ToolBar
 
 class Anim(QPropertyAnimation):
     """

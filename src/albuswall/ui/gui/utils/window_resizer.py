@@ -204,7 +204,7 @@ class WindowResizer(QObject):
                 local_pos = self.win.mapFromGlobal(event.globalPosition().toPoint())
                 # If the mouse clicks on a button-type control, do not interfere.
                 child = self.win.childAt(local_pos)
-                # print(f"Clicked widget: {child}, is button: {isinstance(child, QAbstractButton)}")
+                # print(f"Clicked widgets: {child}, is button: {isinstance(child, QAbstractButton)}")
                 if child is not None and isinstance(child, QAbstractButton):
                     return super().eventFilter(watched, event)
 
