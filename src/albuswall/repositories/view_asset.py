@@ -2,6 +2,7 @@
 """
 视图资产仓库 —— 以视图为单位获取资产列表和资产详情。
 查询时先识别视图类型（虚拟相簿或用户相簿），再拼装相应的筛选语句。
+更新：资产查询增加 source_id 字段。
 """
 
 import json
@@ -45,7 +46,8 @@ class ViewAssetRepository(BaseRepository):
                 file_path,
                 taken_at,
                 mime_type,
-                is_favorite
+                is_favorite,
+                source_id          -- 新增字段
             FROM assets
             WHERE {where}
             ORDER BY {order}
@@ -81,7 +83,8 @@ class ViewAssetRepository(BaseRepository):
                 a.file_path,
                 a.taken_at,
                 a.mime_type,
-                a.is_favorite
+                a.is_favorite,
+                a.source_id        -- 新增字段
             FROM assets a
             JOIN album_assets aa ON a.id = aa.asset_id
             WHERE aa.album_id = ? AND a.is_deleted = 0
@@ -128,11 +131,12 @@ class ViewAssetRepository(BaseRepository):
         media_type = 'video' if mime.startswith('video/') else 'image'
         return AssetItem(
             uuid=row['uuid'],
-            file_path=row['file_path'],  # 映射新字段
+            file_path=row['file_path'],
             taken_at=row['taken_at'],
             media_type=media_type,
             is_favorite=bool(row['is_favorite']),
-            duration=None  # 暂不存储视频时长
+            duration=None,  # 暂不存储视频时长
+            source_id=row['source_id']
         )
 
     # ---------- 资产详情 ----------
@@ -169,4 +173,5 @@ class ViewAssetRepository(BaseRepository):
             gps_longitude=exif.get('GPSLongitude') or exif.get('gps_longitude'),
             created_at=row['created_at'],
             modified_at=row['modified_at'],
+            source_id=row['source_id']
         )

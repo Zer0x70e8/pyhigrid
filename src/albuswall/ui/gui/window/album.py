@@ -16,9 +16,9 @@ from .presenter import AlbumPresenter, AlbumItemData
 class AlbumInterface(BlurLabel):
     """相册界面"""
 
-    def __init__(self, presenter: AlbumPresenter, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent, target=parent)
-        self._presenter = presenter
+        self._presenter = None
 
         # UI 控件引用
         self.back_btn = None
@@ -27,14 +27,19 @@ class AlbumInterface(BlurLabel):
         self.album_edit_btn = None
 
         self.setup_ui()
-        self._connect_presenter()
+
+    def setup(self, presenter: AlbumPresenter):
+        self._presenter = presenter
+        self.back_btn.clicked.connect(self._presenter.go_back)
 
         # 初始状态（根据 presenter 的当前可见性设置）
         self._on_visibility_changed(self._presenter.visible)
 
-    # ------------------------------------------------------------------
-    #  UI 构建
-    # ------------------------------------------------------------------
+        # 转发编辑动作
+        self.album_edit_btn.clicked.connect(self._presenter.edit_requested.emit)
+
+        self._connect_presenter()
+
     def setup_ui(self):
         # 根布局
         main_layout = QVBoxLayout(self)
@@ -43,8 +48,6 @@ class AlbumInterface(BlurLabel):
         # 返回按钮
         self.back_btn = QPushButton(self.tr("Back"), self)
         self.back_btn.setObjectName("AlbumBackButton")
-        # 点击直接调用 Presenter 的方法
-        self.back_btn.clicked.connect(self._presenter.go_back)
 
         # 相册区域
         self.setup_album_area()
@@ -78,8 +81,6 @@ class AlbumInterface(BlurLabel):
 
         self.album_edit_btn = QPushButton(self.tr("+"), self)
         self.album_edit_btn.setObjectName("AlbumEditButton")
-        # 转发编辑动作
-        self.album_edit_btn.clicked.connect(self._presenter.edit_requested.emit)
 
         header_layout.addWidget(title_label)
         header_layout.addStretch()

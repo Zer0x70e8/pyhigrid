@@ -185,7 +185,7 @@ def create_parser(description="PyHiGrid command-line arguments", early_logger=No
         const="__default__",  # default when no value given
         type=str,
         default=argparse.SUPPRESS,
-        help="run library modules as a script (optional modules name)"
+        help="run library models as a script (optional models name)"
     )
     # -O : basic optimization
     parser.add_argument(

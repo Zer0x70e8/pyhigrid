@@ -7,7 +7,7 @@ from pathlib import Path
 
 from albuswall.domain.enums import AlbumType
 from albuswall.infrastructure.database import Connector
-from albuswall.repository.album import AlbumRepository
+from albuswall.repositories.album import AlbumRepository
 
 logger = logging.getLogger(__name__)
 

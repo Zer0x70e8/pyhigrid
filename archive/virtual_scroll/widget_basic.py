@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QWidget
 
 from .defs import *
 from .cell import Cell
-from albuswall.ui.gui.server.thumbnail.provider import AssetImageProvider
+from albuswall.ui.gui.service.thumbnail import AssetImageProvider
 
 
 class VirtualScrollWidgetBasic(QWidget):

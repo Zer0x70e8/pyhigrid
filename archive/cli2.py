@@ -37,9 +37,9 @@ print("cwd:", os.getcwd())
 from albuswall.domain.entities import FileImportInfo
 from albuswall.domain.enums import AlbumAssetSortOption
 from albuswall.infrastructure.database import Connector
-from albuswall.repository.importer import ImportRepository
-from albuswall.repository.view import ViewRepository
-from albuswall.repository.view_asset import ViewAssetRepository
+from albuswall.repositories.importer import ImportRepository
+from albuswall.repositories.view import ViewRepository
+from albuswall.repositories.view_asset import ViewAssetRepository
 
 # ---------------------------------------------------------------------------
 # 日志设置

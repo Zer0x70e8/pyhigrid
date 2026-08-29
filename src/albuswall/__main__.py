@@ -12,7 +12,8 @@ from albuswall.core import Application, Container
 from albuswall.core.build_logger import register_logger
 from albuswall.configue import register_configue
 from albuswall.infrastructure.database import register_database
-from albuswall.repository import register_repository
+from albuswall.repositories import register_repository
+from albuswall.services import register_service
 from albuswall.ui.bootstrap import register_ui
 
 
@@ -49,8 +50,8 @@ def main_():
     # repo
     register_repository(container)
 
-    # # bg
-    #
+    # service
+    register_service(container)
 
     # gc
     container.on(lambda: (

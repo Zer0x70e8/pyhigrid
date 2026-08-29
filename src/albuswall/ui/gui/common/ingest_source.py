@@ -1,8 +1,27 @@
 #
 """"""
 
-from typing import TypedDict, Union
+from enum import Enum
+from typing import Literal, TypedDict, List, Union, Optional
+
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QColor
+
+USER_ROLE_TYPE = Literal[Qt.ItemDataRole.UserRole] | int
+
+TitleRole: USER_ROLE_TYPE = Qt.ItemDataRole.UserRole + 1
+PathRole: USER_ROLE_TYPE = Qt.ItemDataRole.UserRole + 2
+DescriptionRole: USER_ROLE_TYPE = Qt.ItemDataRole.UserRole + 3
+TagsRole: USER_ROLE_TYPE = Qt.ItemDataRole.UserRole + 4
+DetailRole = Qt.ItemDataRole.UserRole + 5
+
+class CardData(TypedDict):
+    # id: Optional[int]
+    title: str
+    path: str
+    description: str
+    tags: List[str]
+    detail_data: dict
 
 
 class FontConfig(TypedDict, total=False):
@@ -35,3 +54,8 @@ class SourceCardStyleConfig(TypedDict, total=False):
     path: TextStyleConfig
     desc: TextStyleConfig
     tags: TagStyleConfig
+
+
+class FileTypeCheckEnum(Enum):
+    suffix = "suffix"
+    magic = "magic"

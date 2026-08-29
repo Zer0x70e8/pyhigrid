@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 from albuswall.infrastructure.database import Connector
-from albuswall.repository.trash import TrashRepository
+from albuswall.repositories.trash import TrashRepository
 
 logger = logging.getLogger(__name__)
 

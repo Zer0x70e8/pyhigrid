@@ -8,7 +8,7 @@ from PySide6.QtCore import QThreadPool, Signal, Slot
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import QLabel
 
-from albuswall.ui.gui.server.thumbnail.imageloader import ImageLoadTask
+from albuswall.ui.gui.service.thumbnail import ImageLoadTask
 
 if TYPE_CHECKING:
     # noinspection PyUnusedImports

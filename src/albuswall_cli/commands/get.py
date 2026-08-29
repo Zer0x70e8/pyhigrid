@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 from albuswall.infrastructure.database import Connector
-from albuswall.repository.asset_edit import AssetEditRepository
+from albuswall.repositories.asset_edit import AssetEditRepository
 
 logger = logging.getLogger(__name__)
 

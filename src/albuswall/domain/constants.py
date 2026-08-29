@@ -21,3 +21,26 @@ UUID_UNORGANIZED = uuid.uuid5(VIRTUAL_ALBUM_NAMESPACE, 'unorganized')
 UUID_FAVORITES = uuid.uuid5(VIRTUAL_ALBUM_NAMESPACE, 'favorites')
 UUID_RECENTLY_DELETED = uuid.uuid5(VIRTUAL_ALBUM_NAMESPACE, 'recently_deleted')
 UUID_VIDEOS = uuid.uuid5(VIRTUAL_ALBUM_NAMESPACE, 'videos')
+
+class IngestSource:
+    # 布尔字段（数据库存储为 0/1）
+    BOOL_FIELDS = {"auto_mount", "subfolder_recursion"}
+
+    # JSON 字段（数据库存储为 TEXT 类型的 JSON 字符串）
+    JSON_FIELDS = {"file_types", "tags", "trigger_config"}
+
+    # 允许通过 create / update 显式写入的字段
+    ALLOWED_FIELDS = {
+        "title",
+        "description",
+        "source_path",
+        "target_path",
+        "mount_point",
+        "auto_mount",
+        "file_type_check",
+        "file_types",
+        "tags",
+        "subfolder_recursion",
+        "subfolder_recursion_depth",
+        "trigger_config",
+    }

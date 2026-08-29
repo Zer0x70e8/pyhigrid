@@ -1,7 +1,7 @@
 #
 """Action buttons for window controls.
 
-This modules provides a set of customizable buttons for common window actions:
+This models provides a set of customizable buttons for common window actions:
 close, minimize, maximize, pin (stay on top), and fold (collapse/expand).
 All buttons are derived from QPushButton and emit signals or perform actions
 directly on the parent window.

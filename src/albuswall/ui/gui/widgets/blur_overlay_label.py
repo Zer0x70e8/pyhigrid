@@ -17,6 +17,8 @@ from PySide6.QtGui import (
     QShowEvent, QPaintEvent, QResizeEvent, QCloseEvent
 )
 
+DRAW_LABEL_CONTENT = True
+
 
 class BlurLabel(QLabel):
     """
@@ -41,11 +43,13 @@ class BlurLabel(QLabel):
         self._blur_radius = blur_radius
         self._blurred_pixmap: Optional[QPixmap] = None
         self._updating = False
+        self._draw_label_content = DRAW_LABEL_CONTENT
 
         # Frameless sub-window that stays on top of the target
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.SubWindow)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setStyleSheet("background: transparent;")
+        if self._draw_label_content:
+            self.setStyleSheet("background: transparent;")
 
         if self._target:
             self._target.installEventFilter(self)
@@ -145,7 +149,8 @@ class BlurLabel(QLabel):
 
             # Draw the matching piece of the blurred pixmap scaled into our rect
             painter.drawPixmap(self.rect(), self._blurred_pixmap, source_rect)
-        super().paintEvent(event)
+        if self._draw_label_content:
+            super().paintEvent(event)
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         """Debounce blur updates when the widgets is resized."""

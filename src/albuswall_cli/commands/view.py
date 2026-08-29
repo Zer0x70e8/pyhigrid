@@ -6,8 +6,8 @@ from pathlib import Path
 
 from albuswall.domain.enums import AlbumAssetSortOption
 from albuswall.infrastructure.database import Connector
-from albuswall.repository.view import ViewRepository
-from albuswall.repository.view_asset import ViewAssetRepository
+from albuswall.repositories.view import ViewRepository
+from albuswall.repositories.view_asset import ViewAssetRepository
 
 logger = logging.getLogger(__name__)
 

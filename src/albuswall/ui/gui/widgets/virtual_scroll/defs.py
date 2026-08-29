@@ -2,7 +2,7 @@
 """
 Virtual scrolling widgets for displaying a grid of images (or placeholders) asynchronously.
 
-This modules provides a `VirtualScrolledWidget` that supports smooth pixel-level scrolling over
+This models provides a `VirtualScrolledWidget` that supports smooth pixel-level scrolling over
 a virtually infinite list of items, rendered in a grid layout. Each item is represented by a `Cell`
 (QLabel) that loads its content asynchronously via a thread pool and a user-provided image provider
 function. The widgets reuses `Cell` objects to minimise memory usage and only manages those currently

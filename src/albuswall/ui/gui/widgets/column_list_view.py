@@ -8,6 +8,8 @@ from PySide6.QtCore import (
     QItemSelectionModel, QItemSelection
 )
 
+WHEEL_INVERTED: bool = False
+
 
 class ColumnLayoutCalculator:
     """多列网格布局计算器，仅负责计算每个索引对应的矩形和总高度。"""
@@ -63,14 +65,13 @@ class ColumnLayoutCalculator:
 
 
 class ColumnListView(QAbstractItemView):
-    """解耦的多列卡片视图，支持滚轮反转和精确点击。"""
+    """多列卡片视图，支持滚轮反转和精确点击。"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._last_mouse_pos = None
         self._column_count = 1
-        self._scroll_offset = 0
-        self._wheel_inverted = True  # 默认开启滚轮反转
+        self._wheel_inverted = WHEEL_INVERTED
         self._layout_calc = ColumnLayoutCalculator(self._column_count, item_height=160)
 
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -82,6 +83,11 @@ class ColumnListView(QAbstractItemView):
         self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setObjectName(type(self).__name__)
+
+    # ---------- 滚动偏移辅助方法 ----------
+    def _scroll_offset(self) -> int:
+        """始终返回垂直滚动条当前值，保证绘制和命中测试一致。"""
+        return self.verticalScrollBar().value()
 
     # ========== 滚轮事件 ==========
     def wheelEvent(self, event: QWheelEvent):
@@ -117,7 +123,7 @@ class ColumnListView(QAbstractItemView):
         return 0
 
     def verticalOffset(self) -> int:
-        return self._scroll_offset
+        return self._scroll_offset()
 
     def isIndexHidden(self, index: QModelIndex) -> bool:
         return False
@@ -178,14 +184,17 @@ class ColumnListView(QAbstractItemView):
         return self.model().index(new_row, 0)
 
     def indexAt(self, point: QPoint) -> QModelIndex:
+        """根据视口坐标返回对应的模型索引。"""
         if not self.model() or self.model().rowCount() == 0:
             return QModelIndex()
 
-        if point.x() < self._layout_calc.margin or point.y() < self._layout_calc.margin:
+        # 检查水平范围（左侧 margin 之外无效）
+        if point.x() < self._layout_calc.margin:
             return QModelIndex()
 
         content_x = point.x() - self._layout_calc.margin
-        content_y = point.y() - self._layout_calc.margin + self._scroll_offset
+        # 垂直内容坐标 = 视口坐标 + 滚动偏移 - 顶部 margin
+        content_y = point.y() + self._scroll_offset() - self._layout_calc.margin
 
         available_width = (
             self.viewport().width() -
@@ -209,9 +218,10 @@ class ColumnListView(QAbstractItemView):
         if col == -1:
             return QModelIndex()
 
-        row_stride = self._layout_calc.item_height + self._layout_calc.spacing
+        # 垂直范围检查
         if content_y < 0:
             return QModelIndex()
+        row_stride = self._layout_calc.item_height + self._layout_calc.spacing
         grid_row = content_y // row_stride
         y_in_row = content_y % row_stride
         if y_in_row >= self._layout_calc.item_height:
@@ -227,7 +237,7 @@ class ColumnListView(QAbstractItemView):
         if not index.isValid() or not self.model():
             return QRect()
         rects = self._layout_calc.compute_rects(
-            self.model(), self.viewport().rect(), self._scroll_offset
+            self.model(), self.viewport().rect(), self._scroll_offset()
         )
         return rects.get(index, QRect())
 
@@ -235,12 +245,13 @@ class ColumnListView(QAbstractItemView):
         if not index.isValid() or not self.model():
             return
 
-        rect = self.visualRect(index)  #type: ignore[arg-type]
+        rect = self.visualRect(index)  # type: ignore[arg-type]
         if rect.isNull():
             return
 
         viewport_rect = self.viewport().rect()
-        target = self._scroll_offset
+        scroll_offset = self._scroll_offset()
+        target = scroll_offset
 
         if rect.top() < 0:
             target += rect.top()
@@ -257,7 +268,7 @@ class ColumnListView(QAbstractItemView):
             return
 
         rects = self._layout_calc.compute_rects(
-            self.model(), self.viewport().rect(), self._scroll_offset
+            self.model(), self.viewport().rect(), self._scroll_offset()
         )
 
         selected_indexes = []
@@ -280,12 +291,7 @@ class ColumnListView(QAbstractItemView):
         return region
 
     def scrollContentsBy(self, dx, dy):
-        """滚动条滚动时更新偏移量（不再设置滚动条，避免递归）。"""
-        if not self.model():
-            return
-        max_offset = max(0, self._layout_calc.total_height(self.model()) - self.viewport().height())
-        self._scroll_offset += dy
-        self._scroll_offset = max(0, min(self._scroll_offset, max_offset))
+        """滚动条值变化时只触发重绘，不维护额外偏移。"""
         self.viewport().update()
 
     def updateGeometries(self):
@@ -297,11 +303,7 @@ class ColumnListView(QAbstractItemView):
             self.verticalScrollBar().setRange(0, max_offset)
             self.verticalScrollBar().setPageStep(viewport_height)
             self.verticalScrollBar().setSingleStep(20)
-
-            if self._scroll_offset > max_offset:
-                self._scroll_offset = max_offset
-            self._scroll_offset = max(0, self._scroll_offset)
-            self.verticalScrollBar().setValue(self._scroll_offset)
+            # 不再手动设置滚动条值，避免递归和不同步
             self.viewport().update()
 
     # ========== 绘制 ==========
@@ -313,7 +315,7 @@ class ColumnListView(QAbstractItemView):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         rects = self._layout_calc.compute_rects(
-            self.model(), self.viewport().rect(), self._scroll_offset
+            self.model(), self.viewport().rect(), self._scroll_offset()
         )
 
         delegate = self.itemDelegate()
@@ -353,12 +355,13 @@ class ColumnListView(QAbstractItemView):
                 self.clearSelection()
                 self.setCurrentIndex(QModelIndex())
             self.viewport().update()
-        super().mousePressEvent(event)  # 基类会调用 setSelection 等，现在已实现
+        super().mousePressEvent(event)
 
     # ========== 模型变化处理 ==========
     def setModel(self, model):
         super().setModel(model)
-        self._scroll_offset = 0
+        # 模型变更时重置滚动位置
+        self.verticalScrollBar().setValue(0)
         self.clearSelection()
         self.setCurrentIndex(QModelIndex())
         self.updateGeometries()

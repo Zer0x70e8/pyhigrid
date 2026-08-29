@@ -2,16 +2,16 @@
 """"""
 from logging import getLogger
 
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication  # , QTimer
 from PySide6.QtWidgets import QApplication
 
-from albuswall.ui.gui.window.window import Window
+from .window import Window, WindowPresenter
+from .utils.disable_win11_round_corners import disable_round_corners
 
 from albuswall import __name__ as __main_package_name__
 from albuswall.__about__ import __title__, __author__
 # from albuswall.core import Application as mainApplication
 from albuswall.configue import UIConfig, Namespace
-
 
 __all__ = ["Application"]
 
@@ -25,11 +25,11 @@ class Application(QApplication):
         # self.setQuitOnLastWindowClosed(False)
 
         self.main_window = None
+        self.main_window_presenter = None
 
         self.container = None
         self.conf = None
         self.confs = None
-
 
     def setup(self, container):
         QCoreApplication.setOrganizationName(__author__)
@@ -42,11 +42,19 @@ class Application(QApplication):
         self.setup_confs()
 
         self.main_window = Window()
-        self.main_window.setup(self.container)
+        self.main_window_presenter = WindowPresenter(self.main_window)
+        self.main_window_presenter.setup(self.container)
+        # QTimer.singleShot(20, lambda: print(
+        #     self.main_window_presenter.presenters["ingest_source_presenter"]
+        # ))
+
+        if not self.conf.dynamic.ui.use_system_round_corners:
+            hwnd = int(self.main_window.winId())
+            disable_round_corners(hwnd)
 
     def setup_confs(self):
         dynamic_conf = Namespace()
-        dynamic_conf.use_system_round_corners =(
+        dynamic_conf.use_system_round_corners = (
             self.confs.use_system_round_corners)
         dynamic_conf.window_size = (
             self.confs.default_window_size

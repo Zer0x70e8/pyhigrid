@@ -2,7 +2,7 @@
 """
 QSS Selector and Block Editor
 
-This modules provides the `QssBlockEditor` class for manipulating a single
+This models provides the `QssBlockEditor` class for manipulating a single
 qualified rule (selector + declaration block) in a Qt Style Sheet (QSS).
 It also exports low‑level utility functions for parsing declarations,
 normalizing selectors, matching selectors with various modes, and more.

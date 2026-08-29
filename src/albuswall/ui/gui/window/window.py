@@ -6,19 +6,15 @@ from importlib.resources import files
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt
 
-from albuswall.ui.gui.service import ContentService
-from albuswall.configue import UIConfig
-
 from .content import Content
-from .presenter import ContentPresenter, AlbumPresenter, ViewPresenter
 from .titlebar import TitleBar
 from .frame import Frame
 from .album import AlbumInterface
 from .viewer import View
 from .menu import Menu
+from .source import Source
 
 from ..utils.window_resizer import WindowResizer
-from ..utils.disable_win11_round_corners import disable_round_corners
 from ..utils.loggers import get_logger
 
 __all__ = ['Window']
@@ -28,6 +24,14 @@ DEFAULT_QSS_RESOURCE = 'default_theme_qss/main_window.qss'
 
 
 class Window(QWidget):
+    content: Content
+    titlebar: TitleBar
+    frame: Frame
+    album_interface: AlbumInterface
+    viewer: View
+    menu: Menu
+    source: Source
+
     def __init__(self):
         super().__init__()
 
@@ -40,96 +44,19 @@ class Window(QWidget):
 
         self.window_resizer = None
 
-        self.content = None
-        self.titlebar = None
-        self.frame = None
-        self.album_interface = None
-        self.viewer = None
-        self.menu = None
-
-        self.content_service = None
-        self.content_presenter = None
-        self.album_presenter = None
-        self.view_presenter = None
-
+        self.setup()
         self.setup_ui()
 
-    def setup(self, container):
-        self.container = container
-        self.conf = container.get("configue")
-        self.confs: UIConfig = self.conf.static.ui
-
-        #
+    def setup(self):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint |
                             Qt.WindowType.WindowMaximizeButtonHint)
 
         self.setMinimumSize(8, 8)
-        w, h = self.conf.dynamic.ui.window_size
-        self.resize(w, h)
 
-        #
         self.window_resizer = WindowResizer(
             self, self, False)
-
-        # ---- 组装 View / Presenter / Service ----
-        # 创建 Service 并注入依赖
-        content_service = ContentService(self)
-        content_service.setup(container)  # 初始化仓库与缩略图路径
-
-        # 创建 Presenter，关联 View 与 Service
-        content_presenter = ContentPresenter(self.content, content_service, parent=self)
-
-        # 用配置中的默认视图初始化显示
-        default_view_id = self.confs.default_current_view
-        content_presenter.initialize_view(default_view_id)
-
-        # 保存引用（可选，如果需要后续访问）
-        self.content_service = content_service
-        self.content_presenter = content_presenter
-        self.view_presenter = ViewPresenter(self.viewer, self)
-        # -----------------------------------------
-
-        # ---- 组装 AlbumInterface 与 AlbumPresenter ----
-        # 从容器获取 view_repo（假设已注册为 "view_repo"）
-        view_repo = container.get("view_repo")
-        if view_repo is None:
-            raise RuntimeError("view_repo not registered in container")
-
-        # 创建 Presenter 和界面
-        self.album_presenter = AlbumPresenter(view_repo)
-        self.album_interface = AlbumInterface(self.album_presenter, self)
-
-        # 标题栏“相册”按钮 → 显示相册界面
-        self.titlebar.btn_album_clicked.connect(
-            lambda: self.album_presenter.show()
-        )
-
-        # 相册选择信号 → 切换视图并隐藏相册界面
-        self.album_presenter.album_selected.connect(
-            lambda album_id: (
-                # 隐藏相册界面
-                self.album_presenter.hide(),
-                # 切换到所选视图
-                self.content_presenter.change_view(album_id),
-            )
-        )
-
-        # 当 Content 中的图片被点击时，获取其完整路径并显示
-        # 通过 Presenter 的信号连接
-        self.content_presenter.image_clicked.connect(
-            self.view_presenter.show_image_from_path
-        )
-
-        # 查看器退出按钮 → 隐藏查看器
-        self.viewer.quit_button.clicked.connect(self.view_presenter.hide)
-
-        #
-        self.titlebar.tool_bar.more_button.setMenu(self.menu)
-
-        #
-        self._logger.debug("The UI setup completed.")
 
     def setup_ui(self):
 
@@ -137,11 +64,15 @@ class Window(QWidget):
         self.titlebar = TitleBar(self)
         self.frame = Frame(self)
         self.viewer = View(self)
+        self.source = Source(self, target=self)
         self.menu = Menu(self)
+
+        self.album_interface = AlbumInterface(self)
 
         #
         self.content.lower()
         self.titlebar.setup()
+        self.source.hide()
 
         if __debug__:
             # noinspection SpellCheckingInspection
@@ -154,9 +85,6 @@ class Window(QWidget):
     def showEvent(self, event):
         super().showEvent(event)
         if not self._first_refresh:
-            if not self.conf.dynamic.ui.use_system_round_corners:
-                hwnd = int(self.winId())
-                disable_round_corners(hwnd)
 
             self.content.overscroll_top = self.titlebar.height()
 
@@ -174,6 +102,7 @@ class Window(QWidget):
             0, 18,
             self.width(), self.height() - 18
         )
+        self.source.setGeometry(0, 18, self.width(), self.height() - 18)
 
     def closeEvent(self, event):
         self.hide()

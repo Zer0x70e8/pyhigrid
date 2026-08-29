@@ -1,7 +1,7 @@
 #
 """
 内容业务服务层
-负责资产查询、缩略图异步生成，不依赖任何 UI 类型。
+负责资产查询、缩略图异步生成
 """
 
 from pathlib import Path
@@ -12,15 +12,16 @@ from PySide6.QtCore import QObject, QThread
 
 from albuswall.core.bootstrapper.container import Container
 from albuswall.core.build_logger import TRACE
-from albuswall.repository import (
+from albuswall.repositories import (
     ViewRepository,
     ViewAssetRepository,
     AssetEditRepository,
+    IngestSourceRepository,
 )
 
-from ..server.thumbnail.generator import ThumbnailGenerator
-from ..server.thumbnail.thumbnail_file_writer import ThumbnailFileWriter
-from ..utils.loggers import get_logger
+from albuswall.ui.gui.service.thumbnail.generator import ThumbnailGenerator
+from albuswall.ui.gui.service.thumbnail.thumbnail_file_writer import ThumbnailFileWriter
+from albuswall.ui.gui.utils.loggers import get_logger
 
 
 MAX_WORKERS = 5
@@ -31,17 +32,12 @@ class _PersistWorker(QThread):
         super().__init__(parent)
         self.asset_uuids = asset_uuids
         self.service = service
-        # ★ 不再连接 finished 到 deleteLater，由 ContentService 统一管理
 
     def run(self):
-        # noinspection PyBroadException
-        try:
-            self.service.generate_and_persist_thumbnails(self.asset_uuids)
-        except Exception:
-            pass  # 日志已在 generate_and_persist_thumbnails 中记录
+        self.service.generate_and_persist_thumbnails(self.asset_uuids)
 
 
-class ContentService(QObject):
+class ImagePresenter(QObject):
     """
     内容服务（纯业务逻辑）
 
@@ -53,6 +49,11 @@ class ContentService(QObject):
 
     _PRESET_SIZES = [THUMB_SIZE_SMALL, THUMB_SIZE_MEDIUM, THUMB_SIZE_LARGE]
 
+    _view_repo: ViewRepository
+    _view_asset_repo: ViewAssetRepository
+    _edit_repo: AssetEditRepository
+    _source_repo: IngestSourceRepository
+
     def __init__(self, parent: Optional[QObject] = None):
         super().__init__(parent)
 
@@ -63,9 +64,6 @@ class ContentService(QObject):
         # obj
         self._logger = get_logger(self, parent)
         self._thumbnail_gen = ThumbnailGenerator()
-        self._view_repo: Optional[ViewRepository] = None
-        self._view_asset_repo: Optional[ViewAssetRepository] = None
-        self._edit_repo: Optional[AssetEditRepository] = None
 
         # status
         self._current_view_id: Optional[str] = None
@@ -73,7 +71,6 @@ class ContentService(QObject):
         self._last_request_params: Optional[Tuple[int, int, int, int]] = None
         self._max_workers = MAX_WORKERS
 
-    # ──── 初始化 ──────────────────────────────────────
     def setup(self, boot_container: Container):
         """
         从容器中注入仓库和缩略图路径配置。
@@ -89,10 +86,10 @@ class ContentService(QObject):
         if not thumbnails_path.exists():
             thumbnails_path.mkdir(parents=True)
 
-        db = boot_container.get("db")
-        self._view_repo = ViewRepository(db)
-        self._view_asset_repo = ViewAssetRepository(db)
-        self._edit_repo = AssetEditRepository(db)
+        self._view_repo = boot_container.get("view_repo")
+        self._view_asset_repo = boot_container.get("view_asset_repo")
+        self._edit_repo = boot_container.get("asset_edit_repo")
+        self._source_repo = boot_container.get("ingest_source_repo")
 
     # ──── 视图管理 ───────────────────────────────────
     def set_current_view(self, view_id: str):
@@ -169,21 +166,71 @@ class ContentService(QObject):
 
     def _get_tasks_in_range(self, start: int, end: int):
         """
-        查询数据库，返回 ( {全局索引: 文件路径}, [资产UUID列表] )。
+        查询数据库，返回 ( {全局索引: 完整文件路径}, [资产UUID列表] )。
+        文件路径会根据资产的 source_id 拼接对应导入源的基础路径。
         """
         assert self._current_view_id, ValueError
         assert self._view_asset_repo, ValueError
+        assert self._source_repo, ValueError
+
         assets = self._view_asset_repo.get_assets(
             self._current_view_id,
             offset=start,
             limit=end - start + 1,
         )
-        tasks = {}
-        uuids = []
+
+        # 1. 收集所有出现过的 source_id（仅接受 int 类型）
+        source_ids: set[int] = set()
+        for asset in assets:
+            sid = getattr(asset, 'source_id', None)
+            if isinstance(sid, int):
+                source_ids.add(sid)
+
+        # 2. 批量查询导入源，构建 source_id -> 基础路径 的映射
+        source_base_map: dict[int, str] = {}
+        if source_ids:
+            for source_id in source_ids:
+                source_record = self._source_repo.get_by_id(source_id)
+                if source_record:
+                    # 优先使用 source_path，其次 target_path，最后 mount_point
+                    base = (
+                            source_record.source_path
+                            or source_record.target_path
+                            or source_record.mount_point
+                            or ''
+                    )
+                    if base:
+                        source_base_map[source_id] = base
+                    else:
+                        self._logger.warning(
+                            f"导入源 {source_id} 没有可用的基础路径字段"
+                        )
+                else:
+                    self._logger.warning(f"导入源 {source_id} 不存在于数据库中")
+
+        # 3. 构建任务字典，拼接完整路径
+        tasks: dict[int, str] = {}
+        uuids: list[str] = []
         for i, asset in enumerate(assets):
             idx = start + i
-            tasks[idx] = asset.file_path
-            uuids.append(asset.uuid)  # 假设资产对象有 uuid 属性
+            file_path = getattr(asset, 'file_path', '') or ''
+            source_id = getattr(asset, 'source_id', None)
+
+            # 仅当 source_id 是 int 且存在于映射中时才拼接路径
+            if isinstance(source_id, int) and source_id in source_base_map:
+                base = source_base_map[source_id]
+                full_path = str(Path(base) / file_path) if file_path else ''
+            else:
+                full_path = file_path
+                if isinstance(source_id, int):
+                    self._logger.warning(
+                        f"资产 {getattr(asset, 'uuid', '')} 的导入源 {source_id} 无法解析基础路径，"
+                        f"将使用原始文件名: {file_path}"
+                    )
+
+            tasks[idx] = full_path
+            uuids.append(getattr(asset, 'uuid', ''))
+
         return tasks, uuids
 
     @classmethod
@@ -254,12 +301,35 @@ class ContentService(QObject):
         worker.deleteLater()
 
     def get_asset_file_path(self, index: int) -> Optional[str]:
-        """返回当前视图中指定索引的资源原始文件路径，失败返回 None"""
+        """返回当前视图中指定索引的资源绝对文件路径，失败返回 None"""
         if not self._current_view_id or not self._view_asset_repo:
             return None
         assets = self._view_asset_repo.get_assets(
             self._current_view_id, offset=index, limit=1
         )
-        if assets and len(assets) > 0:
-            return assets[0].file_path
-        return None
+        if not assets:
+            return None
+
+        asset = assets[0]
+        file_path = getattr(asset, 'file_path', '') or ''
+        source_id = getattr(asset, 'source_id', None)
+
+        # 若 source_id 无效或文件名缺失，直接返回原始文件名（可能为空）
+        if not isinstance(source_id, int) or not file_path:
+            return file_path or None
+
+        # 尝试从导入源仓库查询基础路径
+        if self._source_repo:
+            source_record = self._source_repo.get_by_id(source_id)
+            if source_record:
+                base = (
+                        source_record.source_path
+                        or source_record.target_path
+                        or source_record.mount_point
+                        or ''
+                )
+                if base:
+                    return str(Path(base) / file_path)
+
+        # 若未能拼接，返回原始文件名
+        return file_path or None

@@ -1,4 +1,4 @@
-#
+# 
 """导入资产子命令"""
 import json
 import sys
@@ -8,11 +8,10 @@ import mimetypes
 import logging
 from pathlib import Path
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 # 可选依赖：Pillow
 try:
-    # noinspection PyUnusedImports
     from PIL import Image
     HAS_PIL = True
 except ImportError:
@@ -20,14 +19,25 @@ except ImportError:
 
 from albuswall.domain.entities import FileImportInfo
 from albuswall.infrastructure.database import Connector
-from albuswall.repository.importer import ImportRepository
+from albuswall.repositories.importer import ImportRepository
+from albuswall.repositories.ingest_source import IngestSourceRepository
 from ..utils.random_utils import generate_random_fileinfo
 
 logger = logging.getLogger(__name__)
 
 
-def create_fileinfo_from_path(file_path: str) -> FileImportInfo:
-    """根据真实文件路径创建 FileImportInfo，尽可能提取元数据"""
+def create_fileinfo_from_path(
+    file_path: str,
+    source_id: int,
+    relative_path: Optional[str] = None,
+) -> FileImportInfo:
+    """
+    根据真实文件绝对路径创建 FileImportInfo，并关联 source_id。
+
+    :param file_path: 用于读取元数据的绝对路径
+    :param source_id: 导入源 ID
+    :param relative_path: 最终存入数据库的相对路径（相对于 source_path）
+    """
     path = Path(file_path).resolve()
     if not path.is_file():
         raise FileNotFoundError(f"file: {file_path}")
@@ -45,12 +55,10 @@ def create_fileinfo_from_path(file_path: str) -> FileImportInfo:
             sha256.update(chunk)
     file_hash = sha256.hexdigest()
 
-    # 默认值
     width = 0
     height = 0
     taken_at = None
 
-    # 文件修改时间作为后备
     mtime = datetime.fromtimestamp(path.stat().st_mtime)
 
     if HAS_PIL and mime_type.startswith("image/"):
@@ -59,11 +67,9 @@ def create_fileinfo_from_path(file_path: str) -> FileImportInfo:
                 width, height = img.size
                 exif = img.getexif()
                 if exif:
-                    # 36867 = DateTimeOriginal
                     taken_tag = 36867
                     if taken_tag in exif:
                         raw = exif[taken_tag]
-                        # "YYYY:MM:DD HH:MM:SS" → ISO
                         taken_at = raw.replace(" ", "T").replace(":", "-", 2)
         except Exception as e:
             logger.warning("读取 EXIF 失败 (%s): %s", file_path, e)
@@ -71,11 +77,12 @@ def create_fileinfo_from_path(file_path: str) -> FileImportInfo:
     if not taken_at:
         taken_at = mtime.isoformat()
 
-    asset_uuid = str(uuid.uuid4())
+    # 决定存储的路径：优先使用相对路径，否则使用绝对路径
+    stored_path = relative_path if relative_path is not None else str(path)
 
     return FileImportInfo(
-        uuid=asset_uuid,
-        file_path=str(path),
+        uuid=str(uuid.uuid4()),
+        file_path=stored_path,
         original_name=original_name,
         mime_type=mime_type,
         file_hash=file_hash,
@@ -86,14 +93,19 @@ def create_fileinfo_from_path(file_path: str) -> FileImportInfo:
         thumb_path="",
         thumb_small_path="",
         thumb_medium_path="",
+        source_id=source_id,
     )
 
 
-def parse_fileinfo_from_dict(data: dict) -> FileImportInfo:
-    """从字典（例如 JSON 导入）构造 FileImportInfo"""
+def parse_fileinfo_from_dict(
+    data: dict,
+    source_id: int,
+    relative_path: Optional[str] = None,
+) -> FileImportInfo:
+    """从字典构造 FileImportInfo，并关联 source_id，支持存储相对路径"""
     return FileImportInfo(
         uuid=data.get("uuid", str(uuid.uuid4())),
-        file_path=data.get("file_path", ""),
+        file_path=relative_path if relative_path is not None else data.get("file_path", ""),
         original_name=data.get("original_name", "unknown"),
         mime_type=data.get("mime_type", "application/octet-stream"),
         file_hash=data.get("file_hash", ""),
@@ -104,21 +116,36 @@ def parse_fileinfo_from_dict(data: dict) -> FileImportInfo:
         thumb_path=data.get("thumb_path", ""),
         thumb_small_path=data.get("thumb_small_path", ""),
         thumb_medium_path=data.get("thumb_medium_path", ""),
+        source_id=source_id,
     )
+
+
+def _to_absolute(rel_path: str, source_path: str) -> str:
+    """将相对于 source_path 的相对路径转换为绝对路径，并检查是否为绝对路径"""
+    p = Path(rel_path)
+    if p.is_absolute():
+        raise ValueError(f"路径必须是相对于源的相对路径，不能是绝对路径: {rel_path}")
+    abs_path = (Path(source_path) / p).resolve()
+    return str(abs_path)
 
 
 # ---------------------------------------------------------------------------
 # 子命令注册
 # ---------------------------------------------------------------------------
 def register(subparsers):
-    """注册 import 子命令到 argparse subparsers"""
     import_parser = subparsers.add_parser("import", help="导入资产")
     import_parser.add_argument(
-        "files", nargs="*", help="要导入的文件路径（可多个）；与 --json 互斥"
+        "--source-id",
+        type=int,
+        required=True,
+        help="导入源 ID（对应 ingest_source 表主键），必须存在"
+    )
+    import_parser.add_argument(
+        "files", nargs="*", help="要导入的文件路径（相对于源路径）；与 --json 互斥"
     )
     import_parser.add_argument(
         "--json",
-        help="JSON 元数据文件路径（包含文件信息）；与 files 互斥",
+        help="JSON 元数据文件路径（包含文件信息）；与 files 互斥"
     )
     import_parser.add_argument(
         "--count", type=int, default=None,
@@ -139,53 +166,74 @@ def register(subparsers):
 # 命令执行
 # ---------------------------------------------------------------------------
 def run(args):
-    """执行 import 命令"""
     connector = Connector(Path(args.db))
-    repo = ImportRepository(connector)
+    import_repo = ImportRepository(connector)
+    ingest_repo = IngestSourceRepository(connector)
 
-    # 互斥性检查
     if args.json and args.files:
         print("错误：不能同时使用 --json 和文件路径参数。", file=sys.stderr)
         sys.exit(1)
 
-    # 确定数据源
+    # 获取 source 信息
+    source = ingest_repo.get_by_id(args.source_id)
+    if source is None:
+        print(f"错误：导入源 ID {args.source_id} 不存在。", file=sys.stderr)
+        sys.exit(1)
+    source_path = source["source_path"]
+
     file_infos: List[FileImportInfo] = []
 
     if args.json:
         with open(args.json, "r", encoding="utf-8") as f:
             raw = json.load(f)
-        if isinstance(raw, list):
-            for item in raw:
-                file_infos.append(parse_fileinfo_from_dict(item))
-        else:
-            file_infos.append(parse_fileinfo_from_dict(raw))
+        items = raw if isinstance(raw, list) else [raw]
+        for item in items:
+            try:
+                rel = item.get("file_path", "")
+                if not rel:
+                    raise ValueError("JSON 条目缺少 file_path 字段")
+                # 检查相对路径是否合法（不能是绝对路径）
+                abs_path = _to_absolute(rel, source_path)
+                # 存储相对路径
+                file_infos.append(parse_fileinfo_from_dict(item, args.source_id, rel))
+            except Exception as e:
+                logger.error("跳过 JSON 条目 %s: %s", item, e)
     elif args.files:
         for fp in args.files:
             try:
-                file_infos.append(create_fileinfo_from_path(fp))
+                abs_path = _to_absolute(fp, source_path)
+                # 计算相对路径（相对于 source_path）
+                rel_path = str(Path(abs_path).relative_to(Path(source_path)))
+                file_infos.append(
+                    create_fileinfo_from_path(abs_path, args.source_id, rel_path)
+                )
             except Exception as e:
                 logger.error("跳过文件 %s: %s", fp, e)
     else:
+        # 随机生成模式
         count = args.count if args.count is not None else 5
-        file_infos = [generate_random_fileinfo() for _ in range(count)]
+        for _ in range(count):
+            info = generate_random_fileinfo()
+            # 如果生成的对象支持设置 source_id，则设置；否则可能需要重新构造
+            info.source_id = args.source_id
+            file_infos.append(info)
 
     if not file_infos:
         print("没有可导入的数据。")
         return
 
-    # 相簿关联（如果仓库支持）
     target_albums = args.albums or []
-    if target_albums:
-        try:
-            result = repo.batch_import_files(file_infos, target_album_uuids=target_albums)
-        except TypeError:
-            logger.warning("当前仓库不支持 target_album_uuids，将忽略相簿关联。")
-            result = repo.batch_import_files(file_infos)
-    else:
-        result = repo.batch_import_files(file_infos)
 
-    # 输出结果
+    # batch_import_files 不接受 source_id 参数，source_id 已包含在 FileImportInfo 中
+    result = import_repo.batch_import_files(
+        file_infos,
+        target_album_uuids=target_albums
+    )
+
     if args.json_output:
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        print(json.dumps({
+            "inserted": result.inserted,
+            "skipped": result.skipped
+        }, ensure_ascii=False, indent=2))
     else:
         print(f"Import complete: Success {result.inserted}, Skipped {result.skipped}")

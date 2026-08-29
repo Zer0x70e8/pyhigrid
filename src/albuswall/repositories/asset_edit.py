@@ -12,7 +12,9 @@ class AssetEditRepository(BaseRepository):
     EDITABLE_FIELDS = {
         "original_name", "mime_type", "file_size", "width", "height",
         "taken_at", "city", "exif_json", "is_favorite", "thumb_path",
-        "thumb_small_path", "thumb_medium_path"
+        "thumb_small_path", "thumb_medium_path",
+        # 新增：允许编辑资产的导入源关联
+        "source_id"
     }
 
     def update(self, asset_uuid: str, **fields) -> bool:

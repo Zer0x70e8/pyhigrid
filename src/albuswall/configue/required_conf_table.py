@@ -119,3 +119,4 @@ class UIConfig(Protocol):
     default_window_size: Tuple[int, int]
     default_tui_size: Tuple[int, int]
     use_system_round_corners: bool
+    default_current_view: UUID

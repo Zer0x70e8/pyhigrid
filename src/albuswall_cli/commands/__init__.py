@@ -6,7 +6,10 @@ import importlib
 logger = logging.getLogger(__name__)
 
 # 定义所有命令名称
-COMMANDS = ["init", "import_", "view", "edit", "get", "album", "trash"]
+COMMANDS = ["init", "import_", "view", "edit", "get", "album", "trash", "source",
+            "trigger",
+            "import_service", "trigger_service"
+            ]
 
 
 def register_all(subparsers):
