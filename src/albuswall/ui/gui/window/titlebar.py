@@ -1,4 +1,4 @@
-# titlebar.py
+#
 """"""
 
 from traceback import format_exc
@@ -44,7 +44,7 @@ class _ToolBar(ToolBar):
         self.placeholder_widget.clicked.connect(self.expand_search)
 
         # 更多按钮
-        self.more_button = QPushButton()
+        self.more_button: QPushButton = QPushButton(self)
         self.more_button.setObjectName("MoreButton")
         # self.more_button.setIcon(QIcon(f"{icon_path}/more_icon.png"))
         # self.more_button.setIconSize(QSize(48, 48))
@@ -74,7 +74,7 @@ class TitleBar(QWidget):
 
         self.row_layout = None
 
-        self._first_refresh = False
+        # self._first_refresh = False
 
         self.setup_()
         self.setup_ui()
@@ -122,28 +122,36 @@ class TitleBar(QWidget):
         connector(self.tool_bar.album_button.clicked, self.btn_album_clicked)
         connector(self.tool_bar.more_button.clicked, self.btn_more_clicked)
 
-    def showEvent(self, event):
-        super().showEvent(event)
+    # def showEvent(self, event):
+    #     super().showEvent(event)
+    #
+    #     if not self._first_refresh:
+    #         # self.title.set_icon("")
+    #         # self.title.set_title("")
+    #         # self.title.set_subtitle("")
+    #         # # self.title.set_title("All")
+    #
+    #         self.title.configure({
+    #             "title_text": "",
+    #             "subtitle_text": "",
+    #             "icon_text": ""
+    #         })
+    #
+    #         self._first_refresh = True
 
-        if not self._first_refresh:
-            self.title.set_icon("")
-            self.title.set_title("All")
 
-            self._first_refresh = True
-
-
-if __name__ == '__main__':
-    import sys
-    from PySide6.QtWidgets import QApplication, QWidget
-
-    app = QApplication(sys.argv)
-
-    window = QWidget()
-    window.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-    layout_ = QVBoxLayout()
-    t = TitleBar(window)
-    layout_.addWidget(t)
-    layout_.addStretch()
-    window.setLayout(layout_)
-    window.show()
-    exit(app.exec())
+# if __name__ == '__main__':
+#     import sys
+#     from PySide6.QtWidgets import QApplication, QWidget
+#
+#     app = QApplication(sys.argv)
+#
+#     window = QWidget()
+#     window.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+#     layout_ = QVBoxLayout()
+#     t = TitleBar(window)
+#     layout_.addWidget(t)
+#     layout_.addStretch()
+#     window.setLayout(layout_)
+#     window.show()
+#     exit(app.exec())

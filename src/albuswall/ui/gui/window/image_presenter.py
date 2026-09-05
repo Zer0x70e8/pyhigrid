@@ -71,6 +71,10 @@ class ImagePresenter(QObject):
         self._last_request_params: Optional[Tuple[int, int, int, int]] = None
         self._max_workers = MAX_WORKERS
 
+    @property
+    def current_view_id(self):
+        return self._current_view_id
+
     def setup(self, boot_container: Container):
         """
         从容器中注入仓库和缩略图路径配置。

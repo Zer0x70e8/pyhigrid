@@ -55,9 +55,9 @@ class TitleAndIcon(QWidget):
     def setup_(self):
         self._max_title_width = TITLE_MAX_WIDTH
         self._title_elide = ENABLE_TITLE_OVERLENGTH_PROCESSING
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         self.setMinimumSize(1, 1)
-        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName("TitleAndIcon")
 
     def setup_ui(self):
@@ -73,17 +73,17 @@ class TitleAndIcon(QWidget):
         self.subtitle_label = QLabel(self)
 
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.icon_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.icon_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.icon_label.setFixedSize(64, 64)
         self.icon_label.setObjectName("IconLabel")
 
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.title_label.setWordWrap(False)
-        self.title_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+        self.title_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         self.title_label.setObjectName("TitleLabel")
 
         self.subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.subtitle_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.subtitle_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self.subtitle_label.setObjectName("SubtitleLabel")
 
         layout.addWidget(self.icon_label, 0, 0)
@@ -129,7 +129,7 @@ class TitleAndIcon(QWidget):
             if self._title_elide:
                 # 生成省略文本，不改变存储的完整标题
                 elided = self.title_label.fontMetrics().elidedText(
-                    self._full_title, Qt.ElideRight, width
+                    self._full_title, Qt.TextElideMode.ElideRight, width
                 )
                 self.title_label.setText(elided)
         self.title_label.setFixedWidth(width)

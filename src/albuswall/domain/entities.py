@@ -8,32 +8,6 @@ from typing import Optional, List, Dict, Any
 from .enums import AlbumType
 
 
-# @dataclass
-# class Asset:
-#     id: int
-#     uuid: str
-#     file_path: str
-#     thumb_path: Optional[str]
-#     thumb_small_path: Optional[str]
-#     thumb_medium_path: Optional[str]
-#     original_name: str
-#     mime_type: str
-#     file_hash: str
-#     file_size: int
-#     width: int
-#     height: int
-#     taken_at: str  # ISO 格式
-#     city: Optional[str]
-#     exif_json: Optional[str]
-#     is_favorite: bool = False
-#     is_deleted: bool = False
-#     deleted_at: Optional[str] = None
-#     created_at: Optional[str] = None
-#     modified_at: Optional[str] = None
-#
-#     # 可以不映射所有字段，但保持与 assets 表一致
-
-
 @dataclass
 class Album:
     uuid: str
@@ -43,15 +17,6 @@ class Album:
     sort_order: int = 0
     created_at: Optional[datetime] = None
     modified_at: Optional[datetime] = None
-
-
-# @dataclass
-# class AlbumAsset:
-#     album_id: int
-#     asset_id: int
-#     asset_taken_at: Optional[str] = None
-#     added_at: Optional[str] = None
-#     sort_order: int = 0
 
 
 @dataclass

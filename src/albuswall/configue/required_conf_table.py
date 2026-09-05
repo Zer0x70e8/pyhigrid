@@ -57,7 +57,8 @@ TABLE = {
     "file": {  # It's just the name, not the full path.
         "log_conf_file": Path("logging.conf"),
         "album_db_file": Path("album.db"),
-        "qss_file": [Path("main_window.qss")]
+        "qss_files": [Path("main_window.qss")],
+        "icon_files": "*"
     },
 
     "env_override": {
@@ -70,11 +71,13 @@ TABLE = {
 
     "ui": {
         "ui": UI.CLI,
+        "theme": "default",
         "default_theme": "default",
         "default_window_size": (800, 600),
         "default_tui_size": (80, 24),
         "use_system_round_corners": False,   # 是否启用 Windows 11 系统圆角，默认禁用（直角）
-        "default_current_view": UUID_ALL_PHOTOS
+        "default_current_view": UUID_ALL_PHOTOS,
+        "max_icon_files_limit": 100
     },
 
 }
@@ -100,22 +103,24 @@ TYPE_MAP = {
     "file": {
         "log_conf_file": Path,
         "album_db_file": Path,
-        "qss_file": List[Path]
+        "qss_files": List[Path],
+        "icon_files": str | List[Path],
     },
 
     "ui": {
         "ui": UI,
-        "default_theme": str,
+        "theme": str,
         "default_window_size": TWO_NUM_TYPE,
         "default_tui_size": TWO_NUM_TYPE,
         "use_system_round_corners": bool,
         "default_current_view": UUID,
+        "max_icon_files_limit": int
     },
 }
 
 class UIConfig(Protocol):
     ui: UI
-    default_theme: str
+    theme: str
     default_window_size: Tuple[int, int]
     default_tui_size: Tuple[int, int]
     use_system_round_corners: bool

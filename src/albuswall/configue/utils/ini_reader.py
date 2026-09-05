@@ -6,6 +6,8 @@ Supports generics such as Optional, List, Tuple, and allows external custom type
 """
 
 from __future__ import annotations
+
+import pprint
 import configparser
 import warnings
 from pathlib import Path
@@ -14,11 +16,11 @@ from ..logging_early import EarlyLogger
 
 
 def load_ini(
-    file_path: Path,
-    type_map: Dict[str, Any],
-    defaults: Optional[Dict[str, Any]] = None,
-    converters: Optional[Dict[Any, Callable[[str], Any]]] = None,
-    logger: Optional[EarlyLogger] = None,          # additional parameter for early logging
+        file_path: Path,
+        type_map: Dict[str, Any],
+        defaults: Optional[Dict[str, Any]] = None,
+        converters: Optional[Dict[Any, Callable[[str], Any]]] = None,
+        logger: Optional[EarlyLogger] = None,  # additional parameter for early logging
 ) -> Dict[str, Any]:
     """
     Read configuration from an INI file and convert each value according to type_map.
@@ -68,7 +70,8 @@ def load_ini(
         else:
             top_keys[key] = value
     if logger:
-        logger.trace(f"[INILoader] Section map: {sections}, top-level keys map: {top_keys}")
+        msg = f"[INILoader] Section map: {pprint.pformat(sections)}\nTop-level keys map: {top_keys}"
+        [logger.trace(line) for line in msg.splitlines()]
 
     effective_map = sections.copy()
     if top_keys:
@@ -134,12 +137,14 @@ def load_ini(
                 if key in default_data:
                     raw = default_data[key]
                     if logger:
-                        logger.trace(f"[INILoader] Converting default key {key!r}, raw value: {raw!r}, type: {converter}")
+                        logger.trace(
+                            f"[INILoader] Converting default key {key!r}, raw value: {raw!r}, type: {converter}")
                     section_data[key] = _convert(raw, converter, converters, logger)
                 elif "__default__" in effective_defaults and key in effective_defaults["__default__"]:
                     section_data[key] = effective_defaults["__default__"][key]
                     if logger:
-                        logger.trace(f"[INILoader] Key {key!r} using default value: {effective_defaults['__default__'][key]!r}")
+                        logger.trace(
+                            f"[INILoader] Key {key!r} using default value: {effective_defaults['__default__'][key]!r}")
                 else:
                     section_data[key] = None
                     if logger:
@@ -164,7 +169,8 @@ def load_ini(
             else:
                 section_data = {key: None for key in fields}
                 if logger:
-                    logger.debug(f"[INILoader] Section [{section}] not found in file and no defaults, setting all to None")
+                    logger.debug(
+                        f"[INILoader] Section [{section}] not found in file and no defaults, setting all to None")
         else:
             for key, converter in fields.items():
                 if config.has_option(section, key):
@@ -192,16 +198,17 @@ def load_ini(
     _warn_unrecognized(config, effective_map, logger)
 
     if logger:
-        logger.trace(f"[INILoader] INI loading complete, result: {result}")
+        msg = f"[INILoader] INI loading complete, result: {pprint.pformat(result)}"
+        [logger.trace(line) for line in msg.splitlines()]
 
     return result
 
 
 def _convert(
-    raw: str,
-    converter: Any,
-    custom_converters: Optional[Dict[Any, Callable[[str], Any]]] = None,
-    early_logger: Optional[EarlyLogger] = None
+        raw: str,
+        converter: Any,
+        custom_converters: Optional[Dict[Any, Callable[[str], Any]]] = None,
+        early_logger: Optional[EarlyLogger] = None
 ) -> Any:
     # Custom converter
     if custom_converters and converter in custom_converters:
@@ -244,7 +251,7 @@ def _convert(
             stripped = raw.strip()
             if stripped == "":
                 return []
-            parts = [p.strip() for p in stripped.split(",")]
+            parts = [p.strip() for p in stripped.split(",") if p.strip()]
             return [_convert(p, item_type, custom_converters, early_logger) for p in parts]
         if origin is tuple:
             if not args:
@@ -252,7 +259,7 @@ def _convert(
             stripped = raw.strip()
             if stripped == "":
                 return ()
-            parts = [p.strip() for p in stripped.split(",")]
+            parts = [p.strip() for p in stripped.split(",") if p.strip()]
             if len(args) == 2 and args[1] is ...:
                 item_type = args[0]
                 return tuple(_convert(p, item_type, custom_converters, early_logger) for p in parts)
@@ -293,9 +300,9 @@ def _convert(
 
 
 def _warn_unrecognized(
-    config: configparser.ConfigParser,
-    effective_map: Dict[str, Any],
-    early_logger: Optional[EarlyLogger] = None
+        config: configparser.ConfigParser,
+        effective_map: Dict[str, Any],
+        early_logger: Optional[EarlyLogger] = None
 ) -> None:
     """Warn about unmapped sections/keys in the INI file (using logger or falling back to warnings)."""
     for section in config.sections():

@@ -1,17 +1,20 @@
 #
 """"""
 
+from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict, Optional, Dict, List
 from dataclasses import dataclass
 from logging import Logger
 
-from PySide6.QtCore import QObject, Qt, Signal, QModelIndex
-from PySide6.QtGui import QPixmap
+from PySide6.QtCore import QObject, Qt, Signal, QModelIndex, QTimer
+from PySide6.QtGui import QPixmap, QIcon
 
 from .content import Content
 from .viewer import View
+from .titlebar import TitleBar
 from .source import Source
 from .image_presenter import ImagePresenter
+from ..config.types import UIConfig
 from ..utils.loggers import get_logger
 
 from ..common.ingest_source import DetailRole, CardData
@@ -21,10 +24,10 @@ from ..delegates.source_card_delegate import SourceCardDelegate
 
 from albuswall.domain.entities import IngestSourceEntity
 from albuswall.repositories import (
-    Repositories as AllRepositories, ViewRepository
+    Repositories as AllRepositories, ViewRepository, AlbumRepository
 )
 from albuswall.services.ingest_source_service import IngestSourceService
-from albuswall.configue import UIConfig
+from albuswall.configue import UIConfig as StaticUIConfig
 from albuswall.core.bootstrapper.container import Container
 from albuswall.configue import Configue
 from albuswall.__about__ import __title__ as __main_title__
@@ -46,7 +49,7 @@ class Repositories(AllRepositories):
 class WindowPresenter(QObject):
     container: "Container"
     conf: Configue
-    confs: UIConfig
+    confs: StaticUIConfig
     logger: Logger
     service: Optional[Service]
     presenters: Optional[dict]
@@ -62,7 +65,7 @@ class WindowPresenter(QObject):
     def setup(self, container: "Container"):
         self.container = container
         self.conf = container.get("configue")
-        self.confs: UIConfig = self.conf.static.ui
+        self.confs: StaticUIConfig = self.conf.static.ui
 
         self._view.setWindowTitle(__main_title__)
 
@@ -74,13 +77,21 @@ class WindowPresenter(QObject):
             raise RuntimeError(
                 "view_repo not registered in container"
             )
+        album_repo = container.get("album_repo")
 
-        content_service = ImagePresenter(self)
-        content_service.setup(container)
+        image_presenter = ImagePresenter(self)
+        image_presenter.setup(container)
 
+        title_bar_presenter = TitleBarPresenter(
+            self._view.titlebar,
+            self.conf,
+            album_repo,
+            image_presenter,
+            self
+        )
         content_presenter = ContentPresenter(
             self._view.content,
-            content_service,
+            image_presenter,
             parent=self
         )
         view_presenter = ViewPresenter(
@@ -137,11 +148,12 @@ class WindowPresenter(QObject):
 
         # last
         service_dict: Service = {
-            "content_service": content_service,
+            "content_service": image_presenter,  # 职责被降级了，但我不想处理麻烦的类型检查
             "ingest_source_service": ingest_source_service
         }
         self.service = service_dict
         self.presenters = {
+            "title_bar_presenter": title_bar_presenter,
             "content_presenter": content_presenter,
             "view_presenter": view_presenter,
             "album_presenter": album_presenter,
@@ -160,11 +172,6 @@ class WindowPresenter(QObject):
     def setup_config(self):
         w, h = self.conf.dynamic.ui.window_size
         self._view.resize(w, h)
-
-        # # 从配置文件或默认值初始化模型
-        # self.presenters["ingest_source_detail_presenter"].set_source_path(
-        #     self.confs...
-        # )
 
 
 class ContentPresenter(QObject):
@@ -185,7 +192,6 @@ class ContentPresenter(QObject):
         view.visible_range_changed.connect(self._on_visible_range_changed)
         # 连接 Content 的点击信号
         view.unit_clicked.connect(self._on_unit_clicked)
-
 
     def initialize_view(self, default_view_id: str):
         """首次加载时设置视图范围"""
@@ -230,6 +236,7 @@ class ContentPresenter(QObject):
         if not path: return
         self.image_clicked.emit(path)
 
+
 @dataclass
 class AlbumItemData:
     """用于界面展示的相册数据"""
@@ -247,11 +254,11 @@ class AlbumPresenter(QObject):
         - 处理用户动作（返回、编辑、选择相册）
         - 通知界面数据变化
     """
-    visible_changed = Signal(bool)          # 界面可见性变化
-    data_changed = Signal(list)             # 相册列表数据变化，传递 List[AlbumItemData]
-    back_requested = Signal()               # 用户点击返回
-    edit_requested = Signal()               # 用户点击编辑/添加
-    album_selected = Signal(str)            # 用户选择某个相册，传递索引
+    visible_changed = Signal(bool)  # 界面可见性变化
+    data_changed = Signal(list)  # 相册列表数据变化，传递 List[AlbumItemData]
+    back_requested = Signal()  # 用户点击返回
+    edit_requested = Signal()  # 用户点击编辑/添加
+    album_selected = Signal(str)  # 用户选择某个相册，传递索引
 
     def __init__(self, view_repo: ViewRepository, parent=None):
         super().__init__(parent)
@@ -313,7 +320,7 @@ class ViewPresenter(QObject):
         """加载图像并显示 Viewer"""
         if pixmap.isNull():
             return
-        self._view.viewer.load_pixmap(pixmap)   # View 内部持有 ImageViewer 实例
+        self._view.viewer.load_pixmap(pixmap)  # View 内部持有 ImageViewer 实例
         self._view.show()
         self.shown.emit()
 
@@ -342,6 +349,56 @@ class ViewPresenter(QObject):
         return self._view.isVisible()
 
 
+class TitleBarPresenter(QObject):
+    _view: TitleBar
+    _config: Configue
+    _theme_path: Path
+
+    def __init__(
+            self,
+            view: TitleBar,
+            config: Configue,
+            repo: AlbumRepository,
+            image_presenter: ImagePresenter,
+            parent=None
+    ):
+        super().__init__(parent)
+        self._view = view
+        self._config: UIConfig = config.dynamic.ui
+        self._repo = repo
+        self._image_presenter = image_presenter
+
+        self.setup()
+
+    def setup(self):
+        self.update_theme()
+        QTimer.singleShot(
+            0,
+            lambda: self._view.title.configure({
+                "title_text": self._repo.get_album(  # noqa
+                    self._image_presenter.current_view_id
+                ).title,
+                "subtitle_text": "",
+                "icon_text": ""
+            }))
+
+    def update_theme(self):
+        """Update theme icons from config."""
+        if self._config.icon_files:
+            map_ = {
+                "album_button": lambda f:
+                self._view.tool_bar.album_button.setIcon(QIcon(f)),
+                "search_button": lambda f:
+                self._view.tool_bar.placeholder_widget.setIcon(QIcon(f)),
+                "more_button": lambda f:
+                self._view.tool_bar.more_button.setIcon(QIcon(f)),
+            }
+            for i in self._config.icon_files:
+                # print(Path(i).stem)
+                if Path(i).stem in map_.keys():
+                    map_[Path(i).stem](i)
+
+
 class IngestSourcePresenter(QObject):
     """导入源管理界面的表现层，协调视图、模型与服务层。"""
 
@@ -360,10 +417,9 @@ class IngestSourcePresenter(QObject):
 
         self.setup()
 
-    # ---------- 初始化 ----------
     def setup(self):
         """初始化数据并连接信号，数据来自服务层。"""
-        self._refresh_ui_from_service()   # 填充模型
+        self._refresh_ui_from_service()  # 填充模型
         self._view.set_model(self._model_main, self._delegate)
         self._view.card_clicked.connect(self._on_card_clicked)
         self._view.apply_button.clicked.connect(self._save_current_detail)
@@ -453,9 +509,8 @@ class IngestSourcePresenter(QObject):
         }
 
         card: CardData = {
-            # "id": entity.id,
             "title": entity.title,
-            "path": entity.source_path,      # 卡片上的“路径”对应 source_path
+            "path": entity.source_path,
             "description": entity.description,
             "tags": entity.tags,
             "detail_data": detail_data,

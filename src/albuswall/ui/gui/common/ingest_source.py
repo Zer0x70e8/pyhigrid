@@ -16,7 +16,6 @@ TagsRole: USER_ROLE_TYPE = Qt.ItemDataRole.UserRole + 4
 DetailRole = Qt.ItemDataRole.UserRole + 5
 
 class CardData(TypedDict):
-    # id: Optional[int]
     title: str
     path: str
     description: str

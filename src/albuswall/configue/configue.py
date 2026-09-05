@@ -120,9 +120,4 @@ class DynamicConfig(Namespace):
         self._logger = value
 
     def items(self):
-        results = {}
-        for k, v in self.__dict__.items():
-            if k.startswith("_"):
-                continue
-            results[k] = v
-        return results
+        return ((k, v) for k, v in self.__dict__.items() if not k.startswith("_"))

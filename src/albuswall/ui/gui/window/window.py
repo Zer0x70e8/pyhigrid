@@ -1,8 +1,6 @@
 #
 """"""
 
-from importlib.resources import files
-
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt
 
@@ -19,8 +17,8 @@ from ..utils.loggers import get_logger
 
 __all__ = ['Window']
 
-RESOURCE_PACKAGE = 'albuswall.resources'
-DEFAULT_QSS_RESOURCE = 'default_theme_qss/main_window.qss'
+# RESOURCE_PACKAGE = 'albuswall.resources'
+# DEFAULT_QSS_RESOURCE = 'default_theme_qss/main_window.qss'
 
 
 class Window(QWidget):
@@ -56,7 +54,8 @@ class Window(QWidget):
         self.setMinimumSize(8, 8)
 
         self.window_resizer = WindowResizer(
-            self, self, False)
+            self, self, setup_flag=False
+        )
 
     def setup_ui(self):
 
@@ -73,14 +72,6 @@ class Window(QWidget):
         self.content.lower()
         self.titlebar.setup()
         self.source.hide()
-
-        if __debug__:
-            # noinspection SpellCheckingInspection
-            self.setStyleSheet(
-                files(RESOURCE_PACKAGE)
-                .joinpath(DEFAULT_QSS_RESOURCE)
-                .read_text(encoding='utf-8')
-            )
 
     def showEvent(self, event):
         super().showEvent(event)
